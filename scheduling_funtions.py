@@ -59,11 +59,19 @@ def forbid_min(model, shifts, hard_min, prior = [], prior_shifts=[], continue_pr
                               prior_shifts)
             span = bounded_span(shifts, start + len(prior),
                                 length, prior == [])
-            if continue_prior and start < window_size - 1:
+            print(pred)
+            print(span)
+            print((shifts[start + len(prior) : start + len(prior) + length]))
+            print()
+
+            if continue_prior and start < window_size - len(prior):
                 and_window = start + len(prior) + length - 1
                 model.AddBoolAnd([prior_shifts[and_window], shifts[and_window]]).OnlyEnforceIf(pred + [shifts[and_window]])
-            model.AddBoolOr(span).OnlyEnforceIf(pred)
-
+                model.AddBoolOr(span).OnlyEnforceIf(pred)
+            elif prior != []:
+                model.AddBoolAnd(not_list(shifts[start +  len(prior) : start + len(prior) + hard_min])).OnlyEnforceIf(pred)
+            else:
+                model.AddBoolOr(span)
 
 def forbid_max(model, shifts, hard_max, prior=[], prior_shifts=[], continue_prior=False):
     # Just forbid any sequence of true variables with length hard_max + 1
@@ -74,10 +82,14 @@ def forbid_max(model, shifts, hard_max, prior=[], prior_shifts=[], continue_prio
                           prior_shifts)
         span = bounded_span(shifts, start + len(prior),
                             hard_max, False)
-        if continue_prior and start < window_size - 1:
+        if continue_prior and start < window_size - len(prior):
             and_window = start + len(prior) + hard_max - 1
             model.AddBoolAnd([prior_shifts[and_window], shifts[and_window]]).OnlyEnforceIf(pred + [shifts[and_window]])
-        model.AddBoolOr(span).OnlyEnforceIf(pred)
+            model.AddBoolOr(span).OnlyEnforceIf(pred)
+        elif prior != []:
+            model.AddBoolAnd(not_list(shifts[start +  len(prior) : start + len(prior) + hard_max])).OnlyEnforceIf(pred)
+        else:
+            model.AddBoolOr(span)
 
 
 def penalize_min(model, shifts, hard_min, soft_min, min_cost, prefix, prior=[], prior_shifts=[], continue_prior=False):
@@ -98,7 +110,14 @@ def penalize_min(model, shifts, hard_min, soft_min, min_cost, prefix, prior=[], 
             if continue_prior and start < window_size - 1:
                 and_window = start + len(prior) + length - 1
                 model.AddBoolAnd([prior_shifts[and_window], shifts[and_window]]).OnlyEnforceIf(pred + [shifts[and_window]])
-            model.AddBoolOr(span).OnlyEnforceIf(pred)
+                model.AddBoolOr(span).OnlyEnforceIf(pred)
+            elif prior != []:
+                not_sequence = model.NewBoolVar('not_sequence')
+                model.Add(sum(shifts[start +  len(prior) : start + len(prior) + length]) == len(shifts[start +  len(prior) : start + len(prior) + length])) \
+                    .OnlyEnforceIf(pred + [not_sequence])
+                model.AddBoolOr([not_sequence, lit]).OnlyEnforceIf(pred)
+            else:
+                model.AddBoolOr(span)
             cost_literals.append(lit)
             # We filter exactly the sequence with a short length.
             # The penalty is proportional to the delta with soft_min.
@@ -124,7 +143,14 @@ def penalize_max(model, shifts, hard_max, soft_max, max_cost, prefix, prior=[], 
             if continue_prior and start < window_size - 1:
                 and_window = start + len(prior) + length - 1
                 model.AddBoolAnd([prior_shifts[and_window], shifts[and_window]]).OnlyEnforceIf(pred + [shifts[and_window]])
-            model.AddBoolOr(span).OnlyEnforceIf(pred)
+                model.AddBoolOr(span).OnlyEnforceIf(pred)
+            elif prior != []:
+                not_sequence = model.NewBoolVar('not_sequence')
+                model.Add(sum(shifts[start +  len(prior) : start + len(prior) + length]) == len(shifts[start +  len(prior) : start + len(prior) + length])) \
+                    .OnlyEnforceIf(pred + [not_sequence])
+                model.AddBoolOr([not_sequence, lit]).OnlyEnforceIf(pred)
+            else:
+                model.AddBoolOr(span)
             cost_literals.append(lit)
             # Cost paid is max_cost * excess length.
             cost_coefficients.append(max_cost * (length - soft_max))
