@@ -28,7 +28,7 @@ def not_list(my_list: typing.List):
 # https://github.com/google/or-tools/blob/master/examples/python/shift_scheduling_sat.py
 
 
-def bounded_span(shifts, start, length, left_bound, right_bound):
+def bounded_span(shifts, start, length, left_bound):
     sequence = []
     # Left border (start of works, or works[start - 1])
     if start > 0 and left_bound:
@@ -38,72 +38,67 @@ def bounded_span(shifts, start, length, left_bound, right_bound):
         sequence.append(shifts[start + i])
 
     # Right border (end of works or works[start + length])
-    if start + length < len(shifts) and right_bound:
+    if start + length < len(shifts):
         sequence.append(shifts[start + length].Not())
     return sequence
 
 
-def predicates(start, length, prior, prior_shifts, post, post_shifts):
-    b_prior = [prior_shifts[i + start].Not() if prior[i] == 0 else prior_shifts[i + start]
+def predicates(start, prior, prior_shifts):
+    return [prior_shifts[i + start].Not() if prior[i] == 0 else prior_shifts[i + start]
                for i in range(len(prior))]
-    b_post = [post_shifts[i + start + length + len(post)].Not() if post[i] == 0 else post_shifts[i + start + length + len(post)]
-              for i in range(len(post))]
-    return b_prior + b_post
 
 
-def forbid_min(model, shifts, hard_min, prior=[], post=[], prior_shifts=[], post_shifts=[], and_prior_shifts=False):
+def forbid_min(model, shifts, hard_min, prior = [], prior_shifts=[], continue_prior=False):
     # Forbid sequences that are too short.
     prior_shifts = shifts if prior_shifts == [] else prior_shifts
-    post_shifts = shifts if post_shifts == [] else post_shifts
 
     for length in range(1, hard_min):
-        window_size = len(shifts) - length - len(prior) - len(post) + 1
+        window_size = len(shifts) - length - len(prior)  + 1
         for start in range(window_size):
-            pred = predicates(start, length, prior,
-                              prior_shifts, post, post_shifts)
+            pred = predicates(start, prior,
+                              prior_shifts)
             span = bounded_span(shifts, start + len(prior),
-                                length, prior == [], post == [])
-            if and_prior_shifts and start < window_size - 1:
+                                length, prior == [])
+            if continue_prior and start < window_size - 1:
                 and_window = start + len(prior) + length - 1
                 model.AddBoolAnd([prior_shifts[and_window], shifts[and_window]]).OnlyEnforceIf(pred + [shifts[and_window]])
             model.AddBoolOr(span).OnlyEnforceIf(pred)
 
 
-def forbid_max(model, shifts, hard_max, prior=[], post=[], prior_shifts=[], post_shifts=[], and_prior_shifts=False):
+def forbid_max(model, shifts, hard_max, prior=[], prior_shifts=[], post_shifts=[], continue_prior=False):
     # Just forbid any sequence of true variables with length hard_max + 1
     prior_shifts = shifts if prior_shifts == [] else prior_shifts
     post_shifts = shifts if post_shifts == [] else post_shifts
 
-    window_size = len(shifts) - hard_max - len(prior) - len(post) + 1
+    window_size = len(shifts) - hard_max - len(prior) + 1
     for start in range(window_size):
-        pred = predicates(start, hard_max, prior,
-                          prior_shifts, post, post_shifts)
+        pred = predicates(start, prior,
+                          prior_shifts)
         span = bounded_span(shifts, start + len(prior),
-                            hard_max, False, False)
-        if and_prior_shifts and start < window_size - 1:
+                            hard_max, False)
+        if continue_prior and start < window_size - 1:
             and_window = start + len(prior) + hard_max - 1
             model.AddBoolAnd([prior_shifts[and_window], shifts[and_window]]).OnlyEnforceIf(pred + [shifts[and_window]])
         model.AddBoolOr(span).OnlyEnforceIf(pred)
 
 
-def penalize_min(model, shifts, hard_min, soft_min, min_cost, prefix, prior=[], post=[], prior_shifts=[], post_shifts=[], and_prior_shifts=False):
+def penalize_min(model, shifts, hard_min, soft_min, min_cost, prefix, prior=[], prior_shifts=[], continue_prior=False):
     cost_literals = []
     cost_coefficients = []
     prior_shifts = shifts if prior_shifts == [] else prior_shifts
-    post_shifts = shifts if post_shifts == [] else post_shifts
 
   # Penalize sequences that are below the soft limit.
     for length in range(hard_min, soft_min):
-        window_size = len(prior_shifts) - length - len(prior) - len(post) + 1
+        window_size = len(prior_shifts) - length - len(prior) + 1
         for start in range(window_size):
-            pred = predicates(start, length, prior,
-                              prior_shifts, post, post_shifts)
+            pred = predicates(start, prior,
+                              prior_shifts)
             span = bounded_span(shifts, start + len(prior),
-                                length, prior == [], post == [])
+                                length, prior == [])
             name = ': under_span(start=%i, length=%i)' % (start, length)
             lit = model.NewBoolVar(prefix + name)
             span.append(lit)
-            if and_prior_shifts and start < window_size - 1:
+            if continue_prior and start < window_size - 1:
                 and_window = start + len(prior) + length - 1
                 model.AddBoolAnd([prior_shifts[and_window], shifts[and_window]]).OnlyEnforceIf(pred + [shifts[and_window]])
             model.AddBoolOr(span).OnlyEnforceIf(pred)
@@ -115,24 +110,23 @@ def penalize_min(model, shifts, hard_min, soft_min, min_cost, prefix, prior=[], 
     return cost_literals, cost_coefficients
 
 
-def penalize_max(model, shifts, hard_max, soft_max, max_cost, prefix, prior=[], post=[], prior_shifts=[], post_shifts=[], and_prior_shifts=False):
+def penalize_max(model, shifts, hard_max, soft_max, max_cost, prefix, prior=[], prior_shifts=[], continue_prior=False):
     cost_literals = []
     cost_coefficients = []
 
     prior_shifts = shifts if prior_shifts == [] else prior_shifts
-    post_shifts = shifts if post_shifts == [] else post_shifts
 
     for length in range(soft_max + 1, hard_max + 1):
-        window_size = len(shifts) - length - len(prior) - len(post)
+        window_size = len(shifts) - length - len(prior)
         for start in range(window_size):
-            pred = predicates(start, length, prior,
-                              prior_shifts, post, post_shifts)
+            pred = predicates(start, prior,
+                              prior_shifts)
             span = bounded_span(shifts, start + len(prior),
-                                length, prior == [], post == [])
+                                length, prior == [])
             name = ': over_span(start=%i, length=%i)' % (start, length)
             lit = model.NewBoolVar(prefix + name)
             span.append(lit)
-            if and_prior_shifts and start < window_size - 1:
+            if continue_prior and start < window_size - 1:
                 and_window = start + len(prior) + length - 1
                 model.AddBoolAnd([prior_shifts[and_window], shifts[and_window]]).OnlyEnforceIf(pred + [shifts[and_window]])
             model.AddBoolOr(span).OnlyEnforceIf(pred)
@@ -144,31 +138,31 @@ def penalize_max(model, shifts, hard_max, soft_max, max_cost, prefix, prior=[], 
 
 
 def add_soft_sequence_min_constraint(model, shifts, hard_min, soft_min, min_cost, prefix,
-                                     prior=[], post=[], prior_shifts=[], post_shifts=[], and_prior_shifts=False):
-    forbid_min(model, shifts, hard_min, prior, post,
-               prior_shifts, post_shifts, and_prior_shifts)
+                                     prior=[], prior_shifts=[], continue_prior=False):
+    forbid_min(model, shifts, hard_min, prior, 
+               prior_shifts, continue_prior)
     return penalize_min(model, shifts, hard_min, soft_min, min_cost, prefix,
-                 prior, post, prior_shifts, post_shifts, and_prior_shifts)
+                 prior, prior_shifts, continue_prior)
 
 
 def add_soft_sequence_max_constraint(model, shifts, hard_max, soft_max, max_cost, prefix,
-                                     prior=[], post=[], prior_shifts=[], post_shifts=[], and_prior_shifts=False):
-    forbid_max(model, shifts, hard_max, prior, post,
-               prior_shifts, post_shifts, and_prior_shifts)
-    return penalize_max(model, shifts, hard_max, soft_max, max_cost, prefix, prior, post, prior_shifts, post_shifts, and_prior_shifts)
+                                     prior=[], post=[], prior_shifts=[], post_shifts=[], continue_prior=False):
+    forbid_max(model, shifts, hard_max, prior,
+               prior_shifts, continue_prior)
+    return penalize_max(model, shifts, hard_max, soft_max, max_cost, prefix, prior, prior_shifts, continue_prior)
 
 
 def add_soft_sequence_constraint(model, shifts, hard_min, soft_min, min_cost,
                                  soft_max, hard_max, max_cost, prefix,
-                                 prior=[], post=[], prior_shifts=[], post_shifts=[], and_prior_shifts=False):
-    forbid_min(model, shifts, hard_min, prior, post,
-               prior_shifts, post_shifts, and_prior_shifts)
-    forbid_max(model, shifts, hard_max, prior, post,
-               prior_shifts, post_shifts, and_prior_shifts)
+                                 prior=[], prior_shifts=[], continue_prior=False):
+    forbid_min(model, shifts, hard_min, prior,
+               prior_shifts,continue_prior)
+    forbid_max(model, shifts, hard_max, prior,
+               prior_shifts, continue_prior)
     var1, coeff1 = penalize_min(
-        model, shifts, hard_min, soft_min, min_cost, prefix, prior, post, prior_shifts, post_shifts, and_prior_shifts)
+        model, shifts, hard_min, soft_min, min_cost, prefix, prior, prior_shifts, continue_prior)
     var2, coeff2 = penalize_max(
-        model, shifts, hard_max, soft_max, max_cost, prefix, prior, post, prior_shifts, post_shifts, and_prior_shifts)
+        model, shifts, hard_max, soft_max, max_cost, prefix, prior, prior_shifts, continue_prior)
     return (var1 + var2), (coeff1 + coeff2)
 
 def add_soft_sum_constraint(model, shifts, hard_min, soft_min, min_cost,
