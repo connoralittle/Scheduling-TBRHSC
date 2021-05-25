@@ -539,4 +539,5 @@ def add_soft_sum_constraint(model, shifts, hard_min, soft_min, min_cost,
     return cost_variables, cost_coefficients
 
 def distribution_constraint():
+    
     return
