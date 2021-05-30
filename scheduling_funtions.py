@@ -3,7 +3,7 @@ from typing import List
 import itertools
 import re
 import typing
-
+import math
 
 def window(seq, n=2):
     "Returns a sliding window (of width n) over data from the iterable"
@@ -28,6 +28,32 @@ def detect_pattern_soft(list, pattern):
 def not_list(my_list: typing.List):
     return list(map(lambda x: x.Not(), my_list))
 
+
+def triangle_costs(num_shifts, num_days, num_staff):
+    return math.ceil((num_shifts * num_days) / num_staff)
+
+def debug_priority():
+    return int(triangle(8) * 4)
+
+def highest_priority():
+    return int(triangle(5) * 4)
+
+
+def high_priority():
+    return int(triangle(4) * 4)
+
+
+def medium_priority():
+    return int(triangle(3) * 4)
+
+
+def low_priority():
+    return int(triangle(2) * 4)
+
+
+def triangle(n):
+    return (n * (n + 1)) / 2
+
 # https://github.com/google/or-tools/blob/master/examples/python/shift_scheduling_sat.py
 
 
@@ -51,6 +77,7 @@ def predicates(start, prior):
             if prior.choices[i] == False
             else prior.shifts[i + start]
             for i in range(len(prior.choices))]
+
 
 @dataclass
 class Prior:
@@ -78,7 +105,7 @@ def forbid_min(model, shifts, hard_min, prior=None, post=None):
     # There are 4 main cases and the function should work as expected in all 4
     if post is not None and prior is not None:
         window_size = len(shifts) - len(prior.choices) - \
-        hard_min - len(post.choices) + 1
+            hard_min - len(post.choices) + 1
         for start in range(window_size):
 
             # Get the prior predicates
@@ -139,6 +166,26 @@ def forbid_min(model, shifts, hard_min, prior=None, post=None):
             # If the predicate is true then enforce the next N shifts must be off
             model.AddBoolAnd(span).OnlyEnforceIf(pred)
 
+    elif post is not None and prior is None:
+        window_size = len(shifts) - hard_min + 1 - len(post.choices)
+        for start in range(window_size):
+
+            # Get the post predicates
+            post_window_start = start + hard_min
+            post_window_end = start + hard_min + len(post.choices)
+
+            # Combine them
+            posts = post.shifts[post_window_start:post_window_end]
+
+            # Get the elements after pred
+            sequence_window_start = start
+            sequence_window_end = start + hard_min
+            # The list is notted because we want to ensure that they are false
+            span = not_list(shifts[sequence_window_start:sequence_window_end])
+
+            model.AddBoolAnd(span).OnlyEnforceIf(posts)
+
+
     # If there is no pattern to match just ban all runs of n
     else:
         # This time we want to grow the window from size 1 to size n - 1
@@ -151,6 +198,7 @@ def forbid_min(model, shifts, hard_min, prior=None, post=None):
 
                 # Prohibit runs of n
                 model.AddBoolOr(span)
+
 
 def forbid_max(model, shifts, hard_max, prior=None, post=None):
     # Creates a sliding window accross the planning period
@@ -186,7 +234,6 @@ def forbid_max(model, shifts, hard_max, prior=None, post=None):
 
     #         # If both predicates are satisfied then prohibit the sequence between them
     #         model.AddBoolAnd(span).OnlyEnforceIf(pred)
-
 
     # Sometimes we want the prior to be able to continue and extend the pattern
     # You can take as many days off as you want but once you start working you must work n shifts
@@ -263,9 +310,9 @@ def penalize_min(model, prefix, shifts, hard_min, soft_min, min_cost, prior=None
         # There are 4 main cases and the function should work as expected in all 4
         if post is not None and prior is not None:
             window_size = len(shifts) - len(prior.choices) - \
-            length - len(post.choices) + 1
+                length - len(post.choices) + 1
             for start in range(window_size):
-                
+
                 # Get the prior predicates
                 pred = predicates(start, prior)
 
@@ -363,6 +410,30 @@ def penalize_min(model, prefix, shifts, hard_min, soft_min, min_cost, prior=None
                 # The penalty is proportional to the delta with soft_min.
                 cost_coefficients.append(min_cost * (soft_min - length))
 
+        elif post is not None and prior is None:
+            window_size = len(shifts) - length
+            for start in range(window_size):
+
+                # Get the post predicates
+                post_window_start = start + length
+                post_window_end = start + length + len(post.choices)
+
+                # Combine them
+                posts = post.shifts[post_window_start:post_window_end]
+
+                span = bounded_span(shifts, start, length, False)
+
+                # The name of the new variable
+                name = 'name'
+                lit = model.NewBoolVar(name)
+
+                model.AddBoolAnd(posts + span).OnlyEnforceIf(
+                    posts + [lit.Not()])
+
+                cost_literals.append(lit)
+                # The penalty is proportional to the delta with soft_min.
+                cost_coefficients.append(min_cost * (soft_min - length))
+
         # If there is no pattern to match just ban all runs of n
         else:
             window_size = len(shifts) - length
@@ -387,6 +458,7 @@ def penalize_min(model, prefix, shifts, hard_min, soft_min, min_cost, prior=None
 
     # Return the optimization constraints
     return cost_literals, cost_coefficients
+
 
 def penalize_max(model, prefix, shifts, hard_max, soft_max, max_cost, prior=None, post=None):
     # The optimization constraints
@@ -494,17 +566,23 @@ def penalize_max(model, prefix, shifts, hard_max, soft_max, max_cost, prior=None
     return cost_literals, cost_coefficients
 
 
-def add_soft_sequence_min_constraint(model, prefix, shifts, hard_min, soft_min, min_cost, prior = None, post = None):
+def add_soft_sequence_min_constraint(model, prefix, shifts, hard_min, soft_min, min_cost, prior=None, post=None):
     forbid_min(model, shifts, hard_min, prior, post)
     return penalize_min(model, prefix, shifts, hard_min, soft_min, min_cost, prior, post)
-def add_soft_sequence_max_constraint(model, prefix, shifts, hard_max, soft_max, max_cost, prior = None, post = None):
+
+
+def add_soft_sequence_max_constraint(model, prefix, shifts, hard_max, soft_max, max_cost, prior=None, post=None):
     forbid_max(model, shifts, hard_max, prior, post)
     return penalize_max(model, prefix, shifts, hard_max, soft_max, max_cost, prior, post)
-def add_soft_sequence_constraint2(model, prefix, shifts, hard_max, soft_max, max_cost, hard_min, soft_min, min_cost, prior = None, post = None):
+
+
+def add_soft_sequence_constraint2(model, prefix, shifts, hard_max, soft_max, max_cost, hard_min, soft_min, min_cost, prior=None, post=None):
     forbid_min(model, shifts, hard_min, prior, post)
     forbid_max(model, shifts, hard_max, prior, post)
-    var1, coeff1 = penalize_min(model, prefix, shifts, hard_min, soft_min, min_cost, prior, post)
-    var2, coeff2 = penalize_max(model, prefix, shifts, hard_max, soft_max, max_cost, prior, post)
+    var1, coeff1 = penalize_min(
+        model, prefix, shifts, hard_min, soft_min, min_cost, prior, post)
+    var2, coeff2 = penalize_max(
+        model, prefix, shifts, hard_max, soft_max, max_cost, prior, post)
     return (var1 + var2), (coeff1 + coeff2)
 
 
@@ -538,41 +616,35 @@ def add_soft_sum_constraint(model, shifts, hard_min, soft_min, min_cost,
 
     return cost_variables, cost_coefficients
 
-def distribution_constraint(model, target_shifts, prefix, target, cost):
+
+def distribution_constraint(model, target_shifts, prefix, target):
     # The optimization constraints
     cost_literals = []
     cost_coefficients = []
 
     prefix = "weekend_dist"
-    num_shifts = model.NewIntVar(0, target * 2, '%s' %  prefix)
+    num_shifts = model.NewIntVar(0, target * 2, '%s' % prefix)
     model.Add(num_shifts == sum(target_shifts))
-    diff = model.NewIntVar(-target, target, 'diff_%s' % prefix)
+    diff = model.NewIntVar(-target, target, '%s' % prefix)
     model.Add(num_shifts + diff == target)
 
-    abs_diff = model.NewIntVar(0, target, '%s' %  prefix)
-    model.AddAbsEquality(diff, abs_diff)
+    abs_diff = model.NewIntVar(0, target, '%s' % prefix)
+    model.AddAbsEquality(abs_diff, diff)
 
-    diff_corrected = model.NewIntVar(-4 + cost, target - 4, 'diff_%s' % prefix)
-    model.Add(diff_corrected == abs_diff - 4 + cost)
-
-    abs_diff_corrected = model.NewIntVar(0, target - 4, 'diff_%s' % prefix)
-    model.AddAbsEquality(diff_corrected, abs_diff)
-
-    corrected_diff_next = model.NewIntVar(0, target - 3, '%s' %  prefix)
-    model.Add(corrected_diff_next == abs_diff_corrected + 1)
+    diff_plus_one = model.NewIntVar(1, target + 1, '%s' % prefix)
+    model.Add(diff_plus_one == 1 + abs_diff)
 
     # In order to stay as close to the target as possible a non-linear error is needed
-    # Or else 0 away from the target and 3 away from the target is equivilant to 
+    # Or else 0 away from the target and 3 away from the target is equivilant to
     # 2 away and 1 away. I don't want 1 person to get all the weekends off
-    # I have chosen the triangle numbers, n(n-1)/2, 1 + 2 + 3...
+    # I have chosen the triangle numbers, 4 * n(n+1)/2, 1 + 2 + 3... * 4
     # Using regression this is equivilant to 2x + 2x^2
-    diff_not_linear = model.NewIntVar(0, target * target, 'diff_abs_%s' % prefix)
-    model.AddMultiplicationEquality(diff_not_linear, [abs_diff_corrected, corrected_diff_next])
+    diff_not_linear = model.NewIntVar(
+        0, target * target + target, 'diff_abs_%s' % prefix)
+    model.AddMultiplicationEquality(diff_not_linear, [diff, diff_plus_one])
 
     cost_literals.append(diff_not_linear)
     # The penalty is proportional to the delta with soft_min.
     cost_coefficients.append(2)
 
     return cost_literals, cost_coefficients
-
-
