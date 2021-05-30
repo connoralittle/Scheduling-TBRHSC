@@ -538,6 +538,41 @@ def add_soft_sum_constraint(model, shifts, hard_min, soft_min, min_cost,
 
     return cost_variables, cost_coefficients
 
-def distribution_constraint():
-    
-    return
+def distribution_constraint(model, target_shifts, prefix, target, cost):
+    # The optimization constraints
+    cost_literals = []
+    cost_coefficients = []
+
+    prefix = "weekend_dist"
+    num_shifts = model.NewIntVar(0, target * 2, '%s' %  prefix)
+    model.Add(num_shifts == sum(target_shifts))
+    diff = model.NewIntVar(-target, target, 'diff_%s' % prefix)
+    model.Add(num_shifts + diff == target)
+
+    abs_diff = model.NewIntVar(0, target, '%s' %  prefix)
+    model.AddAbsEquality(diff, abs_diff)
+
+    diff_corrected = model.NewIntVar(-4 + cost, target - 4, 'diff_%s' % prefix)
+    model.Add(diff_corrected == abs_diff - 4 + cost)
+
+    abs_diff_corrected = model.NewIntVar(0, target - 4, 'diff_%s' % prefix)
+    model.AddAbsEquality(diff_corrected, abs_diff)
+
+    corrected_diff_next = model.NewIntVar(0, target - 3, '%s' %  prefix)
+    model.Add(corrected_diff_next == abs_diff_corrected + 1)
+
+    # In order to stay as close to the target as possible a non-linear error is needed
+    # Or else 0 away from the target and 3 away from the target is equivilant to 
+    # 2 away and 1 away. I don't want 1 person to get all the weekends off
+    # I have chosen the triangle numbers, n(n-1)/2, 1 + 2 + 3...
+    # Using regression this is equivilant to 2x + 2x^2
+    diff_not_linear = model.NewIntVar(0, target * target, 'diff_abs_%s' % prefix)
+    model.AddMultiplicationEquality(diff_not_linear, [abs_diff_corrected, corrected_diff_next])
+
+    cost_literals.append(diff_not_linear)
+    # The penalty is proportional to the delta with soft_min.
+    cost_coefficients.append(2)
+
+    return cost_literals, cost_coefficients
+
+
