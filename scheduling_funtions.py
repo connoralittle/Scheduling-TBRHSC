@@ -167,7 +167,7 @@ def forbid_min(model, shifts, hard_min, prior=None, post=None):
             model.AddBoolAnd(span).OnlyEnforceIf(pred)
 
     elif post is not None and prior is None:
-        window_size = len(shifts) - hard_min + 1 - len(post.choices)
+        window_size = len(shifts) - hard_min - len(post.choices) + 1
         for start in range(window_size):
 
             # Get the post predicates
@@ -411,7 +411,7 @@ def penalize_min(model, prefix, shifts, hard_min, soft_min, min_cost, prior=None
                 cost_coefficients.append(min_cost * (soft_min - length))
 
         elif post is not None and prior is None:
-            window_size = len(shifts) - length
+            window_size = len(shifts) - length - len(post.choices) + 1
             for start in range(window_size):
 
                 # Get the post predicates

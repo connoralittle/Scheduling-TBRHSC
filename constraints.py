@@ -107,11 +107,11 @@ def no_late_shift_before_time_off(staff, hard_min, soft_min, min_cost):
         variables, coeffs = add_soft_sequence_min_constraint(
             model=model,
             prefix="days_off_after_midnight_shift",
-            shifts=days_before_days_off,
+            shifts=days_before_days_off + [model.NewConstant(1)] * 1,
             hard_min=hard_min,
             soft_min=soft_min,
             min_cost=min_cost,
-            post=Post(days_off, [1])
+            post=Post([model.NewConstant(1)] * hard_min + days_off, [1])
         )
         obj_bool_vars.extend(variables)
         obj_bool_coeffs.extend(coeffs)
@@ -137,7 +137,7 @@ def on_call_rules(staff):
         variables, coeffs = add_soft_sequence_min_constraint(
             model=model,
             prefix="days_off_after_midnight_shift",
-            shifts=([day_shifts_assigned[m, d] for d in days]),
+            shifts=[day_shifts_assigned[m, d] for d in days],
             hard_min=1,
             soft_min=0,
             min_cost=0,
@@ -327,32 +327,6 @@ def equalize_night_shifts(staff, target, cost):
         obj_int_vars.extend(variables)
         obj_int_coeffs.extend(coeffs)
 
-# def no_nightshifts_before_weekend_off(staff, cost):
-#     # Avoid scheduling people shifts that end after 5 pm Friday on weekends they have off
-
-#     # The optimization constraints
-#     cost_literals = []
-#     cost_coefficients = []
-
-#     for m in staff:
-#         for d in saturdays:
-#             sats = days_assigned[m, d]
-#             if d > 0:
-#                 fris = [late_shifts_assigned[m, d-1]] + [midnight_shifts_assigned[m, d-1]]
-#                 works_after_5 = model.NewBoolVar("works_after_5")
-#                 model.Add(works_after_5 == sum(fris))
-
-#                 # The name of the new variable
-#                 name = ': %d_%d' % (m, d)
-#                 lit = model.NewBoolVar(name)
-#                 model.AddBoolAnd([sats, works_after_5.Not()]).OnlyEnforceIf(
-#                     [sats, lit.Not()])
-#                 cost_literals.append(lit)
-#                 cost_coefficients.append(cost)
-
-#     obj_int_vars.extend(cost_literals)
-#     obj_int_coeffs.extend(cost_coefficients)
-
 
 def no_nightshifts_before_weekend_off(staff, hard_min, soft_min, min_cost):
     # Avoid scheduling people shifts that end after 5 pm Friday on weekends they have off
@@ -360,11 +334,11 @@ def no_nightshifts_before_weekend_off(staff, hard_min, soft_min, min_cost):
         variables, coeffs = add_soft_sequence_min_constraint(
             model=model,
             prefix="days_off_after_midnight_shift",
-            shifts=[after_5_shifts_assigned[(m, d)] for d in fridays],
+            shifts=[after_5_shifts_assigned[(m, d)] for d in fridays] + [model.NewConstant(1)] * 1,
             hard_min=hard_min,
             soft_min=soft_min,
             min_cost=min_cost,
-            post=Post([days_assigned[(m, d)] for d in saturdays], [1])
+            post=Post([model.NewConstant(1)] * hard_min + [days_assigned[(m, d)] for d in saturdays], [1])
         )
         obj_bool_vars.extend(variables)
         obj_bool_coeffs.extend(coeffs)
@@ -432,12 +406,12 @@ def apply_requests(requests):
     # The optimization constraints
     cost_literals = []
     cost_coefficients = []
-    for staff, day, shift, coef in requests:
-        if shift == -1:
-            cost_literals += [days_assigned[staff, day]]
+    for staff2, day2, shift2, coef in requests:
+        if shift2 == -1:
+            cost_literals += [days_assigned[staff2, day2]]
             cost_coefficients += [coef]
         else:
-            cost_literals += [works[staff, day]]
+            cost_literals += [works[staff2, day2, shift2]]
             cost_coefficients += [coef]
     obj_int_vars.extend(cost_literals)
     obj_int_coeffs.extend(cost_coefficients)

@@ -11,7 +11,7 @@ DEBUG = debug_priority()
 staff_list = ['Olivia', 'Emma', 'Ava', 'Charlotte', 'Sophia', 'Amelia', 'Isabella',
               'Mia', 'Evelyn', 'Harper', 'Camila', 'Gianna', 'Abigail', 'Luna', 'Ella',
               'Elizabeth', 'Sofia', 'Emily', 'Avery', 'Mila', 'Aria', 'Scarlett', 'Penelope',
-              'Layla', 'Chloe', 'Victoria', 'Madison', 'Eleanor', 'Grace', 'Nora']
+              'Layla', 'Chloe', 'Victoria', 'Madison', 'Eleanor', 'Grace', 'Nora'][:-5]
 
 ft_only = [0] * len(staff_list)
 midnight_only = [0] * len(staff_list)
@@ -55,7 +55,8 @@ may = monthrange(2021, 5)
 jun = monthrange(20201, 6)
 
 first_day = jan[0]
-days = range(jan[1])
+# days = range(jan[1])
+days = range(jan[1] + feb[1] + mar[1] + apr[1] + may[1] + jun[1])
 
 mondays = days[(0 - first_day) % 7::7]
 tuesdays = days[(1 - first_day) % 7::7]
@@ -80,6 +81,7 @@ requests = [
     (1, 5, -1, DEBUG),
     (1, 6, -1, DEBUG),
 
+    (1, 30, -1, DEBUG),
     (3, 3, -1, DEBUG),
     (11, 6, -1, DEBUG),
     (4, 20, -1, DEBUG),
@@ -100,6 +102,13 @@ requests = [
     (7, 6, -1, DEBUG),
     (7, 8, -1, DEBUG),
     (9, 14, -1, DEBUG),
+
+    (4, 29, 4, DEBUG),
+    (3, 23, 1, DEBUG),
+    (7, 25, 2, DEBUG),
+    (7, 28, 9, DEBUG),
+    (7, 20, 6, DEBUG),
+    (9, 3, 6, DEBUG),
 
 ]
 
