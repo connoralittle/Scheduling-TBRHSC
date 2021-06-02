@@ -1,129 +1,106 @@
-from ortools.sat.python import cp_model
+from ortools.sat.python.cp_model import *
 from data import *
-
-model = cp_model.CpModel()
-solver = cp_model.CpSolver()
-
-# decision variables
-# staff 'm' works shift 's' on day 'd'
-works = {(m, d, s):
-         model.NewBoolVar('works_s%id%is%i' % (m, d, s))
-         for m in staff
-         for d in days
-         for s in shifts}
-
-# intermediate variables
-# staff 'm' works on day 'd'
-
-# This enforces the constraint
-# No two shifts same day
-days_assigned = {(m, d):
-                 model.NewBoolVar('days_works_s%id%i' % (m, d))
-                 for m in staff
-                 for d in days}
-
-for m in staff:
-    for d in days:
-        model.Add(days_assigned[m, d] == sum(works[m, d, s] for s in shifts))
-
-# intermediate variables
-# staff 'm' works on day 'd' on midnight shift 's'
-afternoon_shifts_assigned = {(m, d):
-                             model.NewBoolVar('afternoon_s%id%i' % (m, d))
-                             for m in staff
-                             for d in days}
-
-for m in staff:
-    for d in days:
-        model.Add(afternoon_shifts_assigned[m, d] == sum(
-            works[m, d, s] for s in afternoon_shifts))
-
-# intermediate variables
-# staff 'm' works on day 'd' on midnight shift 's'
-midnight_shifts_assigned = {(m, d):
-                            model.NewBoolVar('midnight_s%id%i' % (m, d))
-                            for m in staff
-                            for d in days}
-
-for m in staff:
-    for d in days:
-        model.Add(midnight_shifts_assigned[m, d] == sum(
-            works[m, d, s] for s in midnight_shifts))
-
-# intermediate variables
-# staff 'm' works on day 'd' on midnight shift 's'
-on_call_shifts_assigned = {(m, d):
-                           model.NewBoolVar('on_call_s%id%i' % (m, d))
-                           for m in staff
-                           for d in days}
-
-for m in staff:
-    for d in days:
-        model.Add(on_call_shifts_assigned[m, d] == sum(
-            works[m, d, s] for s in on_call_shifts))
-
-# intermediate variables
-# staff 'm' works on day 'd' on ft shift 's'
-ft_shifts_assigned = {(m, d):
-                      model.NewBoolVar('ft_s%id%i' % (m, d))
-                      for m in staff
-                      for d in days}
-
-for m in staff:
-    for d in days:
-        model.Add(ft_shifts_assigned[m, d] == sum(
-            works[m, d, s] for s in ft_shifts))
-
-# intermediate variables
-# staff 'm' works on day 'd' on late shift 's'
-late_shifts_assigned = {(m, d):
-                        model.NewBoolVar('late_s%id%i' % (m, d))
-                        for m in staff
-                        for d in days}
-
-for m in staff:
-    for d in days:
-        model.Add(late_shifts_assigned[m, d] == sum(
-            works[m, d, s] for s in late_shifts))
-
-# intermediate variables
-# staff 'm' works on day 'd' on late shift 's'
-after_5_shifts_assigned = {(m, d):
-                           model.NewBoolVar('after_5_s%id%i' % (m, d))
-                           for m in staff
-                           for d in days}
-
-for m in staff:
-    for d in days:
-        model.Add(after_5_shifts_assigned[m, d] == sum(
-            works[m, d, s] for s in late_shifts + midnight_shifts))
-
-# intermediate variables
-# staff 'm' works on day 'd' on midnight shift 's'
-after_930_shifts_assigned = {(m, d):
-                            model.NewBoolVar('after_930_s%id%i' % (m, d))
-                            for m in staff
-                            for d in days}
-
-for m in staff:
-    for d in days:
-        model.Add(after_930_shifts_assigned[m, d] == sum(
-            works[m, d, s] for s in not_shifts(day_shifts)))
+from typing import Dict, List, Tuple
 
 
-# intermediate variables
-# staff 'm' works on day 'd' on late shift 's'
-day_shifts_assigned = {(m, d):
-                       model.NewBoolVar('day_s%id%i' % (m, d))
-                       for m in staff
-                       for d in days}
+def create_model() -> CpModel:
+    return CpModel()
 
-for m in staff:
-    for d in days:
-        model.Add(day_shifts_assigned[m, d] == sum(
-            works[m, d, s] for s in day_shifts))
 
-obj_int_vars = []
-obj_int_coeffs = []
-obj_bool_vars = []
-obj_bool_coeffs = []
+def create_model_variables(model: CpModel,
+                           prefix: str,
+                           staff: List[int],
+                           days: List[int]) -> Dict[Tuple, IntVar]:
+    return {(m, d):
+            model.NewBoolVar(f"{prefix}_staff_{m}_day_{d}")
+            for m in staff
+            for d in days}
+
+
+def create_model_variables_long(model: CpModel,
+                           prefix: str,
+                           staff: List[int],
+                           days: List[int],
+                           shifts: List[int]) -> Dict[Tuple, IntVar]:
+    return {(m, d, s):
+            model.NewBoolVar(f"{prefix}_staff_{m}_day_{d}_shift_{s}")
+            for m in staff
+            for d in days
+            for s in shifts}
+
+
+def create_model_variables_int(model: CpModel,
+                           prefix: str,
+                           ub: int,
+                           lb: int,
+                           staff: List[int],
+                           days: List[int],
+                           shifts: List[int]) -> Dict[Tuple, IntVar]:
+    return {(m, d, s):
+            model.NewIntVar(lb, ub, f"{prefix}_staff_{m}_day_{d}")
+            for m in staff
+            for d in days
+            for s in shifts}
+
+
+def constraints_equal_sum(model: CpModel,
+                          constraints: Dict[str, IntVar],
+                          sums: Dict[str, IntVar],
+                          staff: List[int],
+                          days: List[int],
+                          shifts: List[int]) -> Dict[Tuple, IntVar]:
+    for m in staff:
+        for d in days:
+            model.Add(constraints[m, d] == sum(
+                sums[m, d, s] for s in shifts))
+
+
+def create_model_variables_with_sum(model: CpModel,
+                                    prefix: str,
+                                    sums: Dict[Tuple, IntVar],
+                                    staff: List[int],
+                                    days: List[int],
+                                    shifts: List[int]) -> Dict[Tuple, IntVar]:
+    constraints = {(m, d):
+                   model.NewBoolVar(f"{prefix}_staff_{m}_day_{d}")
+                   for m in staff
+                   for d in days}
+
+    constraints_equal_sum(model, constraints,
+                          sums, staff, days, shifts)
+
+    return constraints
+
+
+def create_staff_variables(model: CpModel,
+                           prefix: str,
+                           values: List[str],
+                           ub: int,
+                           lb: int,
+                           enforcements: Dict[Tuple, IntVar],
+                           staff: List[int],
+                           days: List[int],
+                           shifts: List[int]) -> Dict[Tuple, IntVar]:
+
+    constraints = create_model_variables_int(model, prefix, ub, lb, staff, days, shifts)
+
+    for m in staff:
+        for d in days:
+            for s in shifts:
+                model.Add(constraints[m, d, s] ==
+                          values[m]).OnlyEnforceIf(enforcements[m, d, s])
+                model.Add(constraints[m, d, s] == 0).OnlyEnforceIf(
+                    enforcements[m, d, s].Not())
+
+    return constraints
+
+
+def create_solver(time_seconds: int) -> CpSolver:
+    solver = CpSolver()
+    solver.parameters.max_time_in_seconds = time_seconds
+    solver.parameters.num_search_workers = 4
+    return solver
+
+
+def empty_minimize_constraints() -> Tuple[List, List]:
+    return [], []

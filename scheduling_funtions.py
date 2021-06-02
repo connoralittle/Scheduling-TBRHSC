@@ -1,58 +1,8 @@
 from dataclasses import dataclass
 from typing import List
-import itertools
-import re
-import typing
-import math
-
-def window(seq, n=2):
-    "Returns a sliding window (of width n) over data from the iterable"
-    "   s -> (s0,s1,...s[n-1]), (s1,s2,...,sn), ...                   "
-    it = iter(seq)
-    result = tuple(itertools.islice(it, n))
-    if len(result) == n:
-        yield result
-    for elem in it:
-        result = result[1:] + (elem,)
-        yield result
+from utility_functions import *
 
 
-def detect_pattern(list, pattern):
-    return False if re.search(pattern, ''.join([str(i) for i in list])) is None else True
-
-
-def detect_pattern_soft(list, pattern):
-    return len(re.findall(pattern, ''.join([str(i) for i in list])))
-
-
-def not_list(my_list: typing.List):
-    return list(map(lambda x: x.Not(), my_list))
-
-
-def triangle_costs(num_shifts, num_days, num_staff):
-    return math.ceil((num_shifts * num_days) / num_staff)
-
-def debug_priority():
-    return int(triangle(8) * 4)
-
-def highest_priority():
-    return int(triangle(5) * 4)
-
-
-def high_priority():
-    return int(triangle(4) * 4)
-
-
-def medium_priority():
-    return int(triangle(3) * 4)
-
-
-def low_priority():
-    return int(triangle(2) * 4)
-
-
-def triangle(n):
-    return (n * (n + 1)) / 2
 
 # https://github.com/google/or-tools/blob/master/examples/python/shift_scheduling_sat.py
 
@@ -566,17 +516,17 @@ def penalize_max(model, prefix, shifts, hard_max, soft_max, max_cost, prior=None
     return cost_literals, cost_coefficients
 
 
-def add_soft_sequence_min_constraint(model, prefix, shifts, hard_min, soft_min, min_cost, prior=None, post=None):
+def add_soft_sequence_min(model, prefix, shifts, hard_min, soft_min, min_cost, prior=None, post=None):
     forbid_min(model, shifts, hard_min, prior, post)
     return penalize_min(model, prefix, shifts, hard_min, soft_min, min_cost, prior, post)
 
 
-def add_soft_sequence_max_constraint(model, prefix, shifts, hard_max, soft_max, max_cost, prior=None, post=None):
+def add_soft_sequence_max(model, prefix, shifts, hard_max, soft_max, max_cost, prior=None, post=None):
     forbid_max(model, shifts, hard_max, prior, post)
     return penalize_max(model, prefix, shifts, hard_max, soft_max, max_cost, prior, post)
 
 
-def add_soft_sequence_constraint2(model, prefix, shifts, hard_max, soft_max, max_cost, hard_min, soft_min, min_cost, prior=None, post=None):
+def add_soft_sequence(model, prefix, shifts, hard_max, soft_max, max_cost, hard_min, soft_min, min_cost, prior=None, post=None):
     forbid_min(model, shifts, hard_min, prior, post)
     forbid_max(model, shifts, hard_max, prior, post)
     var1, coeff1 = penalize_min(
@@ -586,7 +536,7 @@ def add_soft_sequence_constraint2(model, prefix, shifts, hard_max, soft_max, max
     return (var1 + var2), (coeff1 + coeff2)
 
 
-def add_soft_sum_constraint(model, shifts, hard_min, soft_min, min_cost,
+def add_soft_sum(model, shifts, hard_min, soft_min, min_cost,
                             soft_max, hard_max, max_cost, prefix):
 
     cost_variables = []
@@ -600,16 +550,16 @@ def add_soft_sum_constraint(model, shifts, hard_min, soft_min, min_cost,
         delta = model.NewIntVar(-len(shifts), len(shifts), '')
         model.Add(delta == soft_min - sum_var)
         # TODO(user): Compare efficiency with only excess >= soft_min - sum_var.
-        excess = model.NewIntVar(0, 7, prefix + ': under_sum')
+        excess = model.NewIntVar(0, len(shifts), prefix + ': under_sum')
         model.AddMaxEquality(excess, [delta, 0])
         cost_variables.append(excess)
         cost_coefficients.append(min_cost)
 
     # Penalize sums above the soft_max target.
     if soft_max < hard_max and max_cost > 0:
-        delta = model.NewIntVar(-7, 7, '')
+        delta = model.NewIntVar(-len(shifts), len(shifts), '')
         model.Add(delta == sum_var - soft_max)
-        excess = model.NewIntVar(0, 7, prefix + ': over_sum')
+        excess = model.NewIntVar(0, len(shifts), prefix + ': over_sum')
         model.AddMaxEquality(excess, [delta, 0])
         cost_variables.append(excess)
         cost_coefficients.append(max_cost)
@@ -617,7 +567,7 @@ def add_soft_sum_constraint(model, shifts, hard_min, soft_min, min_cost,
     return cost_variables, cost_coefficients
 
 
-def distribution_constraint(model, target_shifts, prefix, target):
+def distribution(model, target_shifts, prefix, target):
     # The optimization constraints
     cost_literals = []
     cost_coefficients = []
@@ -627,12 +577,21 @@ def distribution_constraint(model, target_shifts, prefix, target):
     model.Add(num_shifts == sum(target_shifts))
     diff = model.NewIntVar(-target, target, '%s' % prefix)
     model.Add(num_shifts + diff == target)
+    # over = model.NewIntVar(0, target, '%s' % prefix)
+    # under = model.NewIntVar(0, target, '%s' % prefix)
+    # model.Add(num_shifts + over - under == target)
 
     abs_diff = model.NewIntVar(0, target, '%s' % prefix)
     model.AddAbsEquality(abs_diff, diff)
 
     diff_plus_one = model.NewIntVar(1, target + 1, '%s' % prefix)
     model.Add(diff_plus_one == 1 + abs_diff)
+
+    # diff = model.NewIntVar(0, target, '%s' % prefix)
+    # model.Add(diff == over + under)
+
+    # diff_plus_one = model.NewIntVar(1, target + 1, '%s' % prefix)
+    # model.Add(diff_plus_one == diff + 1)
 
     # In order to stay as close to the target as possible a non-linear error is needed
     # Or else 0 away from the target and 3 away from the target is equivilant to
@@ -648,3 +607,29 @@ def distribution_constraint(model, target_shifts, prefix, target):
     cost_coefficients.append(2)
 
     return cost_literals, cost_coefficients
+
+def save_shifts_to_file(works, num_staff, num_days, num_shifts, solver):
+    f = open("prev_shifts.txt", "w")
+
+    f.write(f"{num_staff};")
+    f.write(f"{num_days};")
+    for m in range(num_staff):
+        for d in range(num_days):
+            shift_seq = ''.join([str(solver.Value(works[m,d,s])) for s in range(num_shifts)])
+            f.write(f"{shift_seq};")
+    f.close()
+
+def read_shifts_from_file(model):
+    with open('prev_shifts.txt') as myFile:
+        text = myFile.read()
+        results = text.split(';')
+        prev_staff = range(int(results[0]))
+        prev_days = range(-int(results[1]), 0)
+        results = results[2:]
+        prev_works = {}
+        for m in prev_staff:
+            for d in prev_days:
+                for s, value in enumerate(results[0]):
+                    prev_works[m,d,s] = model.NewConstant(int(value))
+                results = results[1:]
+    return prev_days, prev_works

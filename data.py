@@ -1,5 +1,6 @@
 from calendar import monthrange
-from scheduling_funtions import *
+from utility_functions import *
+from typing import List
 
 NONE = 0
 LOW = low_priority()
@@ -8,24 +9,22 @@ HIGH = high_priority()
 MAX = highest_priority()
 DEBUG = debug_priority()
 
+# Read from a database
 staff_list = ['Olivia', 'Emma', 'Ava', 'Charlotte', 'Sophia', 'Amelia', 'Isabella',
               'Mia', 'Evelyn', 'Harper', 'Camila', 'Gianna', 'Abigail', 'Luna', 'Ella',
               'Elizabeth', 'Sofia', 'Emily', 'Avery', 'Mila', 'Aria', 'Scarlett', 'Penelope',
-              'Layla', 'Chloe', 'Victoria', 'Madison', 'Eleanor', 'Grace', 'Nora'][:-5]
+              'Layla', 'Chloe', 'Victoria', 'Madison', 'Eleanor', 'Grace', 'Nora']
 
-ft_only = [0] * len(staff_list)
-midnight_only = [0] * len(staff_list)
-first_six_month_only = [0] * len(staff_list)
-# ft_only = [0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-# midnight_only = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0]
-# first_six_month_only = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1]
+ft_only_staff_mask = [0] * len(staff_list)
+midnight_staff_mask = [0] * len(staff_list)
+staff_in_first_6_months_mask = [0] * len(staff_list)
+# ft_only_staff = [0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+# midnight_staff = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0]
+# staff_in_first_6_months = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1]
+staff_productivity_mask = [5, 5, 6, 3, 4, 4, 5, 1, 6, 1, 3,
+                           4, 4, 5, 1, 4, 4, 3, 6, 4, 1, 1, 3, 2, 5, 5, 3, 3, 1, 3]
 
-staff = list(range(len(staff_list)))
-midnight_staff = list(filter(lambda x: midnight_only[x] == 1, staff))
-six_month_new_staff = list(
-    filter(lambda x: first_six_month_only[x] == 1, staff))
-ft_staff = list(filter(lambda x: ft_only[x] == 1, staff))
-
+# All shifts are 8 hours
 shift_list = ['0700 - 1500',
               '0730 - 1530 (FT)',
               '0930 - 1730',
@@ -39,39 +38,17 @@ shift_list = ['0700 - 1500',
               '2359 - 0700',
               'On Call']
 
-shifts = list(range(len(shift_list)))
-midnight_shifts = [10]
-late_shifts = list(shifts[7:10])
-day_shifts = list(shifts[:3])
-afternoon_shifts = list(shifts[3:7])
-ft_shifts = [2, 5]
-on_call_shifts = [11]
-
-jan = monthrange(2021, 1)
-feb = monthrange(2021, 2)
-mar = monthrange(2021, 3)
-apr = monthrange(2021, 4)
-may = monthrange(2021, 5)
-jun = monthrange(20201, 6)
-
-first_day = jan[0]
-# days = range(jan[1])
-days = range(jan[1] + feb[1] + mar[1] + apr[1] + may[1] + jun[1])
-
-mondays = days[(0 - first_day) % 7::7]
-tuesdays = days[(1 - first_day) % 7::7]
-wednesdays = days[(2 - first_day) % 7::7]
-thursdays = days[(3 - first_day) % 7::7]
-fridays = days[(4 - first_day) % 7::7]
-saturdays = days[(5 - first_day) % 7::7]
-sundays = days[(6 - first_day) % 7::7]
-weekdays = (list(mondays) + list(tuesdays) +
-            list(wednesdays) + list(thursdays) + list(fridays))
-weekends = (list(saturdays) + list(sundays))
+midnight_shifts_mask = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0]
+late_shifts_mask = [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0]
+day_shifts_mask = [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+afternoon_shifts_mask = [0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0]
+ft_shifts_mask = [0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
+on_call_shifts_mask = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
 
 requests = [
     # staff, day, shift, weight
     # if shift is -1 make it all shifts
+    # if day is -1 then make it all days
 
     # Emma wants the first 6 days off after working one day
     (1, 1, -1, DEBUG),
@@ -110,12 +87,54 @@ requests = [
     (7, 20, 6, DEBUG),
     (9, 3, 6, DEBUG),
 
+    (0, 0, 1, DEBUG),
+    (17, 0, 1, DEBUG),
+
 ]
 
 
-def not_staff(staff_list):
-    return staff if staff_list == [] else list(set(staff) - set(staff_list))
+def create_data(data: List) -> List[int]:
+    return list(range(len(data)))
 
 
-def not_shifts(shift_list):
-    return shifts if shift_list == [] else list(set(shifts) - set(shift_list))
+def filter_data(data: List[int], mask: List[int]) -> List[int]:
+    return list(filter(lambda x: mask[x] == 1, data))
+
+
+def create_date_range(first_month: int, last_month: int, year: int) -> List[int]:
+    days = sum([monthrange(year, month)[1]
+               for month in range(first_month, last_month + 1)])
+    first_day = monthrange(year, first_month)[0]
+    return list(range(days)), first_day
+
+
+def days_of_the_week(days: List[int], first_day: int, offset: int):
+    return days[(offset - first_day) % 7::7]
+
+
+def mondays(days: List[int], first_day: int) -> List[int]:
+    return days_of_the_week(days, first_day, 0)
+
+
+def tuesdays(days: List[int], first_day: int) -> List[int]:
+    return days_of_the_week(days, first_day, 1)
+
+
+def wednesdays(days: List[int], first_day: int) -> List[int]:
+    return days_of_the_week(days, first_day, 2)
+
+
+def thursdays(days: List[int], first_day: int) -> List[int]:
+    return days_of_the_week(days, first_day, 3)
+
+
+def fridays(days: List[int], first_day: int) -> List[int]:
+    return days_of_the_week(days, first_day, 4)
+
+
+def saturdays(days: List[int], first_day: int) -> List[int]:
+    return days_of_the_week(days, first_day, 5)
+
+
+def sundays(days: List[int], first_day: int) -> List[int]:
+    return days_of_the_week(days, first_day, 6)
