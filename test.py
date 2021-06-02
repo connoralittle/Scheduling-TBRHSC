@@ -28,16 +28,27 @@ def max_days_worked_test(staff_works_day_results: Dict[Tuple, IntVar]):
         assert(not detect_pattern(result, "11111111"))
 
 
-def min_days_off_after_midnight_test(staff_works_midnight_shift_results: Dict[Tuple, IntVar],
+def min_days_off_after_midnight_test(solver,
+                                    staff_works_midnight_shifts: Dict[Tuple, IntVar],
+                                    staff_works_midnight_shift_results: Dict[Tuple, IntVar],
                                      staff_works_day_results: Dict[Tuple, IntVar],
                                      days: List[int]):
     # # 2 days off after last midnight (except on call shift).
     for staff in staff_works_midnight_shift_results.keys():
         if not midnight_staff_mask[staff]:
+            print(staff_works_midnight_shift_results[staff])
+            print(staff_works_day_results[staff])
+            print()
+            print(days)
+            print()
             for day in days[:-3]:
-                if staff_works_midnight_shift_results[staff][day] and not staff_works_midnight_shift_results[staff][day+1]:
+                if solver.Value(staff_works_midnight_shifts[staff,day]) and not solver.Value(staff_works_midnight_shifts[staff,day + 1]):
+                    print(staff_works_midnight_shift_results[staff])
+                    print(staff_works_midnight_shift_results[staff])
+                    print(day)
+                    print()
                     assert(
-                        sum(staff_works_day_results[staff][day+1:day+3]) == 0)
+                        not sum([solver.Value(staff_works_midnight_shifts[staff,day + 1]), solver.Value(staff_works_midnight_shifts[staff,day + 2])]))
 
 
 def midnight_physicians_test(staff_works_shift_on_day_results: Dict[Tuple, IntVar],
@@ -100,8 +111,8 @@ def on_call_rules_after_test(staff_works_on_call_shift_results: Dict[Tuple, IntV
             if idx < len(days)-1 and result[idx]:
                 assert(staff_works_day_shift_results[key][idx+1] == 0)
 
+
 def days_off_after_consecutive_shifts_test(staff_works_day_results: Dict[Tuple, IntVar]):
     # 2 days off after 3 to 7 days of work in a row
     for key, result in staff_works_day_results.items():
         assert(not detect_pattern(result, "11101"))
-

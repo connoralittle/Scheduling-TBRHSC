@@ -3,7 +3,6 @@ from typing import List
 from utility_functions import *
 
 
-
 # https://github.com/google/or-tools/blob/master/examples/python/shift_scheduling_sat.py
 
 
@@ -88,17 +87,19 @@ def forbid_min(model, shifts, hard_min, prior=None, post=None):
                 # Get the prior predicates
                 pred = predicates(start, prior)
 
-                # Get a bounded span of the window to the right
-                span = bounded_span(shifts, start + len(prior.choices),
-                                    length, False)
+                # Get the elements after pred
+                sequence_window_start = start + len(prior.choices)
+                sequence_window_end = start + len(prior.choices) + length + 1
+                span = shifts[sequence_window_start:sequence_window_end]
 
-                # Either you have the shift and the prior or you have neither
-                and_window = start + len(prior.choices) + length - 1
-                model.AddBoolAnd([prior.shifts[and_window], shifts[and_window]]).OnlyEnforceIf(
-                    pred + [shifts[and_window]])
+                # Xor doesn't support reified variables so we have to do it manually
+                xor_bool = model.NewBoolVar("")
 
-                # Then ban runs of n
-                model.AddBoolOr(span).OnlyEnforceIf(pred)
+                # If xor is disabled prevent the span from having working
+                model.Add(sum(span) == 0).OnlyEnforceIf(
+                    pred + [xor_bool.Not()])
+                model.Add(prior.shifts[start + 1] == 1).OnlyEnforceIf(
+                    pred + [xor_bool])
 
     elif post is None and prior is not None:
         window_size = len(shifts) - len(prior.choices) - hard_min + 1
@@ -134,7 +135,6 @@ def forbid_min(model, shifts, hard_min, prior=None, post=None):
             span = not_list(shifts[sequence_window_start:sequence_window_end])
 
             model.AddBoolAnd(span).OnlyEnforceIf(posts)
-
 
     # If there is no pattern to match just ban all runs of n
     else:
@@ -196,17 +196,19 @@ def forbid_max(model, shifts, hard_max, prior=None, post=None):
                 # Get the prior predicates
                 pred = predicates(start, prior)
 
-                # Get a bounded span of the window to the right
-                span = bounded_span(shifts, start + len(prior.choices),
-                                    length, False)
+                # Get the elements after pred
+                sequence_window_start = start + len(prior.choices)
+                sequence_window_end = start + len(prior.choices) + length + 1
+                span = shifts[sequence_window_start:sequence_window_end]
 
-                # Either you have the shift and the prior or you have neither
-                and_window = start + len(prior.choices) + length - 1
-                model.AddBoolAnd([prior.shifts[and_window], shifts[and_window]]).OnlyEnforceIf(
-                    pred + [shifts[and_window]])
+                # Xor doesn't support reified variables so we have to do it manually
+                xor_bool = model.NewBoolVar("")
 
-                # Then ban runs of n
-                model.AddBoolOr(span).OnlyEnforceIf(pred)
+                # If xor is disabled prevent the span from having working
+                model.Add(sum(span) == 0).OnlyEnforceIf(
+                    pred + [xor_bool.Not()])
+                model.Add(prior.shifts[start + 1] == 1).OnlyEnforceIf(
+                    pred + [xor_bool])
 
     elif post is None and prior is not None:
         window_size = len(shifts) - hard_max - len(prior.choices) + 1
@@ -305,27 +307,31 @@ def penalize_min(model, prefix, shifts, hard_min, soft_min, min_cost, prior=None
         elif post is None and prior is not None and prior.continue_shifts:
             window_size = len(shifts) - len(prior.choices) - length
             for start in range(window_size):
-                # Get the prior predicates
-                pred = predicates(start, prior)
-
-                # Get a bounded span of the window to the right
-                span = bounded_span(shifts, start + len(prior.choices),
-                                    length, False)
 
                 # The name of the new variable
                 name = ': under_span(start=%i, length=%i)' % (start, length)
                 lit = model.NewBoolVar(prefix + name)
 
-                # Allow the lit to be chosen
-                span.append(lit)
+                # Get the prior predicates
+                pred = predicates(start, prior)
 
-                # Either you have the shift and the prior or you have neither
-                and_window = start + len(prior.choices) + length - 1
-                model.AddBoolAnd([prior.shifts[and_window], shifts[and_window]]).OnlyEnforceIf(
-                    pred + [shifts[and_window]])
+                # Get the elements after pred
+                sequence_window_start = start + len(prior.choices)
+                sequence_window_end = start + len(prior.choices) + length + 1
+                span = shifts[sequence_window_start:sequence_window_end]
 
-                # Then ban runs of n
-                model.AddBoolOr(span).OnlyEnforceIf(pred)
+                # Xor doesn't support reified variables so we have to do it manually
+                xor_bool = model.NewBoolVar("")
+                pattern_break_bool = model.NewBoolVar("")
+
+                # If xor is disabled prevent the span from having working
+                model.Add(sum(span) == 0).OnlyEnforceIf(
+                    pred + [xor_bool.Not(), pattern_break_bool.Not()])
+                model.Add(prior.shifts[start + 1] == 1).OnlyEnforceIf(
+                    pred + [xor_bool])
+
+                # Either all of the shifts are on or the literal is on
+                model.AddBoolOr([pattern_break_bool, lit]).OnlyEnforceIf(pred)
 
                 cost_literals.append(lit)
                 # The penalty is proportional to the delta with soft_min.
@@ -435,31 +441,35 @@ def penalize_max(model, prefix, shifts, hard_max, soft_max, max_cost, prior=None
         if post is None and prior is not None and prior.continue_shifts:
             window_size = len(shifts) - len(prior.choices) - length
             for start in range(window_size):
-                # Get the prior predicates
-                pred = predicates(start, prior)
-
-                # Get a bounded span of the window to the right
-                span = bounded_span(shifts, start + len(prior.choices),
-                                    length, False)
 
                 # The name of the new variable
                 name = ': under_span(start=%i, length=%i)' % (start, length)
                 lit = model.NewBoolVar(prefix + name)
 
-                # Allow the lit to be chosen
-                span.append(lit)
+                # Get the prior predicates
+                pred = predicates(start, prior)
 
-                # Either you have the shift and the prior or you have neither
-                and_window = start + len(prior.choices) + length - 1
-                model.AddBoolAnd([prior.shifts[and_window], shifts[and_window]]).OnlyEnforceIf(
-                    pred + [shifts[and_window]])
+                # Get the elements after pred
+                sequence_window_start = start + len(prior.choices)
+                sequence_window_end = start + len(prior.choices) + length + 1
+                span = shifts[sequence_window_start:sequence_window_end]
 
-                # Then ban runs of n
-                model.AddBoolOr(span).OnlyEnforceIf(pred)
+                # Xor doesn't support reified variables so we have to do it manually
+                xor_bool = model.NewBoolVar("")
+                pattern_break_bool = model.NewBoolVar("")
+
+                # If xor is disabled prevent the span from having working
+                model.Add(sum(span) == 0).OnlyEnforceIf(
+                    pred + [xor_bool.Not(), pattern_break_bool.Not()])
+                model.Add(prior.shifts[start + 1] == 1).OnlyEnforceIf(
+                    pred + [xor_bool])
+
+                # Either all of the shifts are on or the literal is on
+                model.AddBoolOr([pattern_break_bool, lit]).OnlyEnforceIf(pred)
 
                 cost_literals.append(lit)
                 # The penalty is proportional to the delta with soft_min.
-                cost_coefficients.append(max_cost * (length - soft_max))
+                cost_coefficients.append(max_cost * (soft_max - length))
 
         elif post is None and prior is not None:
             window_size = len(shifts) - len(prior.choices) - length
@@ -537,7 +547,7 @@ def add_soft_sequence(model, prefix, shifts, hard_max, soft_max, max_cost, hard_
 
 
 def add_soft_sum(model, shifts, hard_min, soft_min, min_cost,
-                            soft_max, hard_max, max_cost, prefix):
+                 soft_max, hard_max, max_cost, prefix):
 
     cost_variables = []
     cost_coefficients = []
@@ -607,29 +617,3 @@ def distribution(model, target_shifts, prefix, target):
     cost_coefficients.append(2)
 
     return cost_literals, cost_coefficients
-
-def save_shifts_to_file(works, num_staff, num_days, num_shifts, solver):
-    f = open("prev_shifts.txt", "w")
-
-    f.write(f"{num_staff};")
-    f.write(f"{num_days};")
-    for m in range(num_staff):
-        for d in range(num_days):
-            shift_seq = ''.join([str(solver.Value(works[m,d,s])) for s in range(num_shifts)])
-            f.write(f"{shift_seq};")
-    f.close()
-
-def read_shifts_from_file(model):
-    with open('prev_shifts.txt') as myFile:
-        text = myFile.read()
-        results = text.split(';')
-        prev_staff = range(int(results[0]))
-        prev_days = range(-int(results[1]), 0)
-        results = results[2:]
-        prev_works = {}
-        for m in prev_staff:
-            for d in prev_days:
-                for s, value in enumerate(results[0]):
-                    prev_works[m,d,s] = model.NewConstant(int(value))
-                results = results[1:]
-    return prev_days, prev_works

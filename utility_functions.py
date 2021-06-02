@@ -55,3 +55,29 @@ def triangle(n):
 
 def list_difference(starting_list: List, difference_list: List):
     return difference_list if starting_list == [] else list(set(starting_list) - set(difference_list))
+
+def save_shifts_to_file(staff_works_shift_on_day, num_staff, num_days, num_shifts, solver):
+    f = open("prev_shifts.txt", "w")
+
+    f.write(f"{num_staff};")
+    f.write(f"{num_days};")
+    for m in range(num_staff):
+        for d in range(num_days):
+            shift_seq = ''.join([str(solver.Value(staff_works_shift_on_day[m,d,s])) for s in range(num_shifts)])
+            f.write(f"{shift_seq};")
+    f.close()
+
+def read_shifts_from_file(model):
+    with open('prev_shifts.txt') as myFile:
+        text = myFile.read()
+        results = text.split(';')
+        prev_staff = range(int(results[0]))
+        prev_days = list(range(-int(results[1]), 0))
+        results = results[2:]
+        prev_works = {}
+        for m in prev_staff:
+            for d in prev_days:
+                for s, value in enumerate(results[0]):
+                    prev_works[m,d,s] = model.NewConstant(int(value))
+                results = results[1:]
+    return prev_days, prev_works

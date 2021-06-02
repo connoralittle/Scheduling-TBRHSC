@@ -46,49 +46,49 @@ ft_shifts_mask = [0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
 on_call_shifts_mask = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
 
 requests = [
-    # staff, day, shift, weight
-    # if shift is -1 make it all shifts
-    # if day is -1 then make it all days
+#     # staff, day, shift, weight
+#     # if shift is -1 make it all shifts
+#     # if day is -1 then make it all days
 
-    # Emma wants the first 6 days off after working one day
-    (1, 1, -1, DEBUG),
-    (1, 2, -1, DEBUG),
-    (1, 3, -1, DEBUG),
-    (1, 4, -1, DEBUG),
-    (1, 5, -1, DEBUG),
-    (1, 6, -1, DEBUG),
+#     # Emma wants the first 6 days off after working one day
+#     (1, 1, -1, DEBUG),
+#     (1, 2, -1, DEBUG),
+#     (1, 3, -1, DEBUG),
+#     (1, 4, -1, DEBUG),
+#     (1, 5, -1, DEBUG),
+#     (1, 6, -1, DEBUG),
 
-    (1, 30, -1, DEBUG),
-    (3, 3, -1, DEBUG),
-    (11, 6, -1, DEBUG),
-    (4, 20, -1, DEBUG),
-    (2, 3, -1, DEBUG),
-    (8, 16, -1, DEBUG),
-    (6, 14, -1, DEBUG),
+#     (1, 30, -1, DEBUG),
+#     (3, 3, -1, DEBUG),
+#     (11, 6, -1, DEBUG),
+#     (4, 20, -1, DEBUG),
+#     (2, 3, -1, DEBUG),
+#     (8, 16, -1, DEBUG),
+#     (6, 14, -1, DEBUG),
 
-    (6, 3, -1, DEBUG),
-    (14, 6, -1, DEBUG),
-    (15, 20, -1, DEBUG),
-    (12, 3, -1, DEBUG),
-    (18, 16, -1, DEBUG),
-    (19, 14, -1, DEBUG),
+#     (6, 3, -1, DEBUG),
+#     (14, 6, -1, DEBUG),
+#     (15, 20, -1, DEBUG),
+#     (12, 3, -1, DEBUG),
+#     (18, 16, -1, DEBUG),
+#     (19, 14, -1, DEBUG),
 
-    (4, 3, -1, DEBUG),
-    (3, 6, -1, DEBUG),
-    (7, 4, -1, DEBUG),
-    (7, 6, -1, DEBUG),
-    (7, 8, -1, DEBUG),
-    (9, 14, -1, DEBUG),
+#     (4, 3, -1, DEBUG),
+#     (3, 6, -1, DEBUG),
+#     (7, 4, -1, DEBUG),
+#     (7, 6, -1, DEBUG),
+#     (7, 8, -1, DEBUG),
+#     (9, 14, -1, DEBUG),
 
-    (4, 29, 4, DEBUG),
-    (3, 23, 1, DEBUG),
-    (7, 25, 2, DEBUG),
-    (7, 28, 9, DEBUG),
-    (7, 20, 6, DEBUG),
-    (9, 3, 6, DEBUG),
+#     (4, 29, 4, DEBUG),
+#     (3, 23, 1, DEBUG),
+#     (7, 25, 2, DEBUG),
+#     (7, 28, 9, DEBUG),
+#     (7, 20, 6, DEBUG),
+#     (9, 3, 6, DEBUG),
 
-    (0, 0, 1, DEBUG),
-    (17, 0, 1, DEBUG),
+#     (0, 0, 1, DEBUG),
+#     (17, 0, 1, DEBUG),
 
 ]
 
@@ -108,33 +108,33 @@ def create_date_range(first_month: int, last_month: int, year: int) -> List[int]
     return list(range(days)), first_day
 
 
-def days_of_the_week(days: List[int], first_day: int, offset: int):
-    return days[(offset - first_day) % 7::7]
+def days_of_the_week(days: List[int], offset: int):
+    return list(filter(lambda x: ((x - offset) % 7) == 0, days))
 
 
 def mondays(days: List[int], first_day: int) -> List[int]:
-    return days_of_the_week(days, first_day, 0)
+    return days_of_the_week(days, (0 - first_day) % 7)
 
 
 def tuesdays(days: List[int], first_day: int) -> List[int]:
-    return days_of_the_week(days, first_day, 1)
+    return days_of_the_week(days, (1 - first_day) % 7)
 
 
 def wednesdays(days: List[int], first_day: int) -> List[int]:
-    return days_of_the_week(days, first_day, 2)
+    return days_of_the_week(days, (2 - first_day) % 7)
 
 
 def thursdays(days: List[int], first_day: int) -> List[int]:
-    return days_of_the_week(days, first_day, 3)
+    return days_of_the_week(days, (3 - first_day) % 7)
 
 
 def fridays(days: List[int], first_day: int) -> List[int]:
-    return days_of_the_week(days, first_day, 4)
+    return days_of_the_week(days, (4 - first_day) % 7)
 
 
 def saturdays(days: List[int], first_day: int) -> List[int]:
-    return days_of_the_week(days, first_day, 5)
+    return days_of_the_week(days, (5 - first_day) % 7)
 
 
 def sundays(days: List[int], first_day: int) -> List[int]:
-    return days_of_the_week(days, first_day, 6)
+    return days_of_the_week(days, (6 - first_day) % 7)
