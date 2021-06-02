@@ -633,6 +633,8 @@ def apply_productivity(model: CpModel,
                            obj_int_vars: List[IntVar],
                            obj_int_coeffs: List[int]):
     # With productivities 1-n I can use the expected die rolls of span n-sided dice to determine how often each productivity will be violated
+    # The paper just describes "super cool" physicians
+    # This could be balancing mean time to completion, average cost, etc
     for d in days:
         for wind in window(shifts[:-1], span):
             variables, coeffs = add_soft_sum(
