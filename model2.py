@@ -42,6 +42,7 @@ def create_model_variables_int(model: CpModel,
             for d in days
             for s in shifts}
 
+
 def constraints_equal_sum(model: CpModel,
                           constraints: Dict[str, IntVar],
                           sums: Dict[str, IntVar],

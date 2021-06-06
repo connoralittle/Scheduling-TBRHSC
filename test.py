@@ -29,26 +29,17 @@ def max_days_worked_test(staff_works_day_results: Dict[Tuple, IntVar]):
 
 
 def min_days_off_after_midnight_test(solver,
-                                    staff_works_midnight_shifts: Dict[Tuple, IntVar],
-                                    staff_works_midnight_shift_results: Dict[Tuple, IntVar],
+                                     staff_works_midnight_shifts: Dict[Tuple, IntVar],
+                                     staff_works_midnight_shift_results: Dict[Tuple, IntVar],
                                      staff_works_day_results: Dict[Tuple, IntVar],
                                      days: List[int]):
     # # 2 days off after last midnight (except on call shift).
     for staff in staff_works_midnight_shift_results.keys():
         if not midnight_staff_mask[staff]:
-            print(staff_works_midnight_shift_results[staff])
-            print(staff_works_day_results[staff])
-            print()
-            print(days)
-            print()
             for day in days[:-3]:
-                if solver.Value(staff_works_midnight_shifts[staff,day]) and not solver.Value(staff_works_midnight_shifts[staff,day + 1]):
-                    print(staff_works_midnight_shift_results[staff])
-                    print(staff_works_midnight_shift_results[staff])
-                    print(day)
-                    print()
+                if solver.Value(staff_works_midnight_shifts[staff, day]) and not solver.Value(staff_works_midnight_shifts[staff, day + 1]):
                     assert(
-                        not sum([solver.Value(staff_works_midnight_shifts[staff,day + 1]), solver.Value(staff_works_midnight_shifts[staff,day + 2])]))
+                        not sum([solver.Value(staff_works_midnight_shifts[staff, day + 1]), solver.Value(staff_works_midnight_shifts[staff, day + 2])]))
 
 
 def midnight_physicians_test(staff_works_shift_on_day_results: Dict[Tuple, IntVar],

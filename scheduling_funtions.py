@@ -617,3 +617,5 @@ def distribution(model, target_shifts, prefix, target):
     cost_coefficients.append(2)
 
     return cost_literals, cost_coefficients
+
+#fuck everything

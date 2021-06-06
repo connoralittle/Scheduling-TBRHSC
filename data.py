@@ -90,6 +90,11 @@ requests = [
 #     (0, 0, 1, DEBUG),
 #     (17, 0, 1, DEBUG),
 
+        # Emily loves 7 am shifts
+      (1, -1, 0, -DEBUG),
+      (1, -1, 1, -DEBUG),
+      (1, -1, 2, -DEBUG),
+
 ]
 
 

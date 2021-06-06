@@ -56,8 +56,8 @@ def triangle(n):
 def list_difference(starting_list: List, difference_list: List):
     return difference_list if starting_list == [] else list(set(starting_list) - set(difference_list))
 
-def save_shifts_to_file(staff_works_shift_on_day, num_staff, num_days, num_shifts, solver):
-    f = open("prev_shifts.txt", "w")
+def save_shifts_to_file(name, staff_works_shift_on_day, num_staff, num_days, num_shifts, solver):
+    f = open(name, "w")
 
     f.write(f"{num_staff};")
     f.write(f"{num_days};")
@@ -67,8 +67,8 @@ def save_shifts_to_file(staff_works_shift_on_day, num_staff, num_days, num_shift
             f.write(f"{shift_seq};")
     f.close()
 
-def read_shifts_from_file(model):
-    with open('prev_shifts.txt') as myFile:
+def read_shifts_from_file(model, name):
+    with open(name) as myFile:
         text = myFile.read()
         results = text.split(';')
         prev_staff = range(int(results[0]))

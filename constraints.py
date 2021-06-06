@@ -607,6 +607,7 @@ def equalize_weekdays(model: CpModel,
 
 def apply_requests(staff_works_shift_on_day: Dict[Tuple, IntVar],
                    staff_works_day: Dict[Tuple, IntVar],
+                   days: List[int],
                    obj_int_vars: List[IntVar],
                    obj_int_coeffs: List[int],
                    requests: Tuple):
@@ -617,6 +618,10 @@ def apply_requests(staff_works_shift_on_day: Dict[Tuple, IntVar],
         if shift2 == -1:
             cost_literals += [staff_works_day[staff2, day2]]
             cost_coefficients += [coef]
+        elif day2 == -1:
+            for d in days:
+                cost_literals += [staff_works_shift_on_day[staff2, d, shift2]]
+                cost_coefficients += [coef]
         else:
             cost_literals += [staff_works_shift_on_day[staff2, day2, shift2]]
             cost_coefficients += [coef]
