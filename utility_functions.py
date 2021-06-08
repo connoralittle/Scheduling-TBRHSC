@@ -1,7 +1,7 @@
 import itertools
 import re
 import math
-from typing import List
+from typing import List, Dict
 
 def window(seq, n=2):
     "Returns a sliding window (of width n) over data from the iterable"
@@ -26,6 +26,8 @@ def detect_pattern_soft(list, pattern):
 def not_list(my_list: List):
     return list(map(lambda x: x.Not(), my_list))
 
+def not_dict(my_dict: Dict):
+    return {k: v.Not() for k, v in my_dict.items()}
 
 def triangle_costs(num_shifts, num_days, num_staff):
     return math.ceil((num_shifts * num_days) / num_staff)
@@ -81,3 +83,6 @@ def read_shifts_from_file(model, name):
                     prev_works[m,d,s] = model.NewConstant(int(value))
                 results = results[1:]
     return prev_days, prev_works
+
+def obj_result(solver, obj):
+    return sum(map(lambda y: y[0] *  y[1], zip(map(lambda x: solver.Value(x), obj[0]), obj[1])))

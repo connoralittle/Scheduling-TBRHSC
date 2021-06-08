@@ -103,3 +103,20 @@ def create_solver(time_seconds: int) -> CpSolver:
 
 def empty_minimize_constraints() -> Tuple[List, List]:
     return [], []
+
+class VarArraySolutionPrinter(CpSolverSolutionCallback):
+    """Print intermediate solutions."""
+
+    def __init__(self, variables):
+        CpSolverSolutionCallback.__init__(self)
+        self.__variables = variables
+        self.__solution_count = 0
+
+    def on_solution_callback(self):
+        self.__solution_count += 1
+        for v in self.__variables:
+            print('%s=%i' % (v, self.Value(v)), end=' ')
+        print()
+
+    def solution_count(self):
+        return self.__solution_count
