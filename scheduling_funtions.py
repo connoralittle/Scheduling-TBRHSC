@@ -82,7 +82,7 @@ def shift_window(shifts, length, prior=None, post=None):
     return range(window_size(shifts, length, prior, post))
 
 
-def shift_span(shifts, start, length, bounded, prior=None):
+def shift_span(shifts, start, length, bounded, prior=None, post=None):
     # Plus one to make the window inclusive
     if bounded:
         return bounded_span(shifts, start, length)
@@ -91,6 +91,8 @@ def shift_span(shifts, start, length, bounded, prior=None):
     if prior is not None:
         window_size_start += len(prior.choices)
         window_size_end += len(prior.choices)
+    if post is not None:
+        window_size_end -= len(post.choices)
     return shifts[window_size_start:window_size_end]
 
 
@@ -122,7 +124,7 @@ def forbid_max(model, shifts, hard_max, prior=None, post=None):
     for length in window_length(hard_max, grow_pred):
         # Find the start of each window
         for start in shift_window(shifts, length, prior, post):
-            span = shift_span(shifts, start, length, False, prior)
+            span = shift_span(shifts, start, length, False, prior, post)
 
             # Find the predicates
             priors = predicates(start, prior)
@@ -154,7 +156,7 @@ def forbid_min(model, shifts, hard_min, prior=None, post=None):
         # Find the start of each window
         for start in shift_window(shifts, length, prior, post):
             span = shift_span(shifts, start, length,
-                              not prior_exists and not post_exists, prior)
+                              not prior_exists and not post_exists, prior, post)
 
             # Find the predicates
             priors = predicates(start, prior)
@@ -173,6 +175,23 @@ def forbid_min(model, shifts, hard_min, prior=None, post=None):
                     continue
                 forbid_seq_continue_pattern(model, span, start, pred, prior)
 
+#         window_size = len(shifts) - hard_min - len(post.choices) + 1
+#         for start in range(window_size):
+
+#             # Get the post predicates
+#             post_window_start = start + hard_min
+#             post_window_end = start + hard_min + len(post.choices)
+
+#             # Combine them
+#             posts = post.shifts[post_window_start:post_window_end]
+
+#             # Get the elements after pred
+#             sequence_window_start = start
+#             sequence_window_end = start + hard_min
+#             # The list is notted because we want to ensure that they are false
+#             span = not_list(shifts[sequence_window_start:sequence_window_end])
+
+#             model.AddBoolAnd(span).OnlyEnforceIf(posts)
 
 def penalize_min(model, prefix, shifts, hard_min, soft_min, min_cost, prior=None, post=None):
     # The optimization constraints
@@ -184,10 +203,10 @@ def penalize_min(model, prefix, shifts, hard_min, soft_min, min_cost, prior=None
 
     # Penalize sequences that are below the soft limit.
     # All pathes need to loop to add different costs per different differences
-    for length in range(hard_min, soft_min):
+    for length in range(hard_min, soft_min+1):
         for start in shift_window(shifts, length, prior, post):
             span = shift_span(shifts, start, length,
-                              not prior_exists and not post_exists, prior)
+                              not prior_exists and not post_exists, prior, post)
 
             # Find the predicates
             priors = predicates(start, prior)
@@ -199,6 +218,9 @@ def penalize_min(model, prefix, shifts, hard_min, soft_min, min_cost, prior=None
             lit = model.NewBoolVar(prefix + name)
 
             or_vars = [lit]
+
+            print(span)
+            print()
 
             if prior_exists or post_exists:
                 # We need to create the expression (A1 and A2 and A3 and ... and An) or lit
@@ -233,10 +255,10 @@ def penalize_max(model, prefix, shifts, hard_max, soft_max, max_cost, prior=None
 
     # Penalize sequences that are below the soft limit.
     # All pathes need to loop to add different costs per different differences
-    for length in range(soft_max + 1, hard_max + 1):
+    for length in range(soft_max, hard_max + 1):
         for start in shift_window(shifts, length, prior, post):
             span = shift_span(shifts, start, length,
-                              not prior_exists and not post_exists, prior)
+                              not prior_exists and not post_exists, prior, post)
 
             # Find the predicates
             priors = predicates(start, prior)
