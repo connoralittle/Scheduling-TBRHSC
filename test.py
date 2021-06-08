@@ -25,10 +25,14 @@ def no_two_shifts_on_same_day_test(staff_works_shift_on_day_results: Dict[Tuple,
 
 def max_days_worked_test(staff_works_day_results: Dict[Tuple, IntVar], hard_max: int, soft_max: int, obj):
     # Maximum work 7 consecutive days
-    add_soft_sequence_max_test("Max days worked consecutively", staff_works_day_results, hard_max, soft_max, obj)
+    add_soft_sequence_max_test(
+        "Max days worked consecutively", staff_works_day_results, hard_max, soft_max, obj)
 
-def min_days_off_after_midnight_test(staff_works_midnight_shift_results, hard_min, soft_min, obj, prior = None):
-    add_soft_sequence_min_test("Min days off after midnight shift", staff_works_midnight_shift_results, hard_min, soft_min, obj, prior)
+
+def min_days_off_after_midnight_test(staff_doesnt_work_day_results, staff_works_midnight_shift_results, hard_min, soft_min, obj):
+    add_soft_sequence_min_test("Min days off after midnight shift",
+                               staff_doesnt_work_day_results, hard_min, soft_min, obj, Prior(staff_works_midnight_shift_results, [1], True))
+
 
 def midnight_physicians_test(staff_works_shift_on_day_results: Dict[Tuple, IntVar],
                              shifts: List[int]):
@@ -48,7 +52,8 @@ def no_midnights_within_six_months_test(staff_works_midnight_shift_results: Dict
 
 def max_midnights_in_a_row_test(staff_works_midnight_shift_results: Dict[Tuple, IntVar], hard_max: int, soft_max: int, obj):
     # Maximum 2 midnights in a row (except for several physicians who only work midnights)
-    add_soft_sequence_max_test("Max midnights worked consecutively", staff_works_midnight_shift_results, hard_max, soft_max, obj)
+    add_soft_sequence_max_test("Max midnights worked consecutively",
+                               staff_works_midnight_shift_results, hard_max, soft_max, obj)
 
 
 def ft_physicians_test(staff_works_shift_on_day_results: Dict[Tuple, IntVar],
@@ -67,29 +72,22 @@ def no_late_shift_before_time_off_test(staff_works_day_results: Dict[Tuple, IntV
             assert(staff_works_after_5_shift_results[m][d-1] == 0)
 
 
-def on_call_rules_before_test(staff_works_on_call_shift_results: Dict[Tuple, IntVar],
-                              staff_works_after_930_shift_results: Dict[Tuple, IntVar]):
+def on_call_rules_before_test(staff_doesnt_work_after_930_shift_results, staff_works_on_call_shift_results, hard_min, soft_min, obj):
     # On call shift - day after rules
     # Physicians can work the 0930 shifts or earlier prior to working on call.
-    for key, results in staff_works_on_call_shift_results.items():
-        for idx in results:
-            if idx > 0 and results[idx]:
-                assert(staff_works_after_930_shift_results[key][idx-1] == 0)
+    add_soft_sequence_min_test("No shifts after 930 before on call",
+                               staff_doesnt_work_after_930_shift_results, hard_min, soft_min, obj, post=Post(staff_works_on_call_shift_results, [1]))
 
 
-def on_call_rules_after_test(staff_works_on_call_shift_results: Dict[Tuple, IntVar],
-                             staff_works_day_shift_results: Dict[Tuple, IntVar],
-                             days: List[int]):
-
+def on_call_rules_after_test(staff_doesnt_work_day_shift_results, staff_works_on_call_shift_results, hard_min, soft_min, obj):
     # On call shift - day after rules
     # They can work starting no earlier than 11 the day after on call.
-    for key, result in staff_works_on_call_shift_results.items():
-        for idx in result:
-            if idx < len(days)-1 and result[idx]:
-                assert(staff_works_day_shift_results[key][idx+1] == 0)
+    add_soft_sequence_min_test("No early morning shifts post on call",
+                               staff_doesnt_work_day_shift_results, hard_min, soft_min, obj, Prior(staff_works_on_call_shift_results, [1]))
 
 
-def days_off_after_consecutive_shifts_test(staff_works_day_results: Dict[Tuple, IntVar]):
+
+def days_off_after_consecutive_shifts_test(staff_doesnt_work_day_results, staff_works_day_results, hard_min, soft_min, obj):
     # 2 days off after 3 to 7 days of work in a row
-    for key, result in staff_works_day_results.items():
-        assert(not detect_pattern(result, "11101"))
+    add_soft_sequence_min_test("days_off_after_consecutive_shifts",
+                               staff_doesnt_work_day_results, hard_min, soft_min, obj, Prior(staff_works_day_results, [1, 1, 1]))

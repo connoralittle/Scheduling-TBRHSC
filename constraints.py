@@ -46,7 +46,7 @@ def max_days_worked(model: CpModel,
 
 
 def min_days_off_after_midnight(model: CpModel,
-                                stafF_doesnt_work_day: Dict[Tuple, IntVar],
+                                staff_doesnt_work_day: Dict[Tuple, IntVar],
                                 staff_works_midnight_shift: Dict[Tuple, IntVar],
                                 staff: List[int],
                                 days: List[int],
@@ -61,7 +61,7 @@ def min_days_off_after_midnight(model: CpModel,
         variables, coeffs = add_soft_sequence_min(
             model=model,
             prefix="min_days_off_after_midnight",
-            shifts=[stafF_doesnt_work_day[m, d] for d in days],
+            shifts=[staff_doesnt_work_day[m, d] for d in days],
             hard_min=hard_min,
             soft_min=soft_min,
             min_cost=min_cost,
@@ -232,7 +232,7 @@ def days_off_after_consecutive_shifts(model: CpModel,
             hard_min=hard_min,
             soft_min=soft_min,
             min_cost=min_cost,
-            prior=Prior([staff_works_day[m, d] for d in days], [True, True, True]))
+            prior=Prior([staff_works_day[m, d] for d in days], [1, 1, 1]))
         obj_bool_vars.extend(variables)
         obj_bool_coeffs.extend(coeffs)
     return obj_bool_vars, obj_bool_coeffs
