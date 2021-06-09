@@ -232,7 +232,7 @@ def days_off_after_consecutive_shifts(model: CpModel,
             hard_min=hard_min,
             soft_min=soft_min,
             min_cost=min_cost,
-            prior=Prior([staff_works_day[m, d] for d in days], [1, 1, 1]))
+            prior=Prior([staff_works_day[m, d] for d in days], [1, 1, 1], True))
         obj_bool_vars.extend(variables)
         obj_bool_coeffs.extend(coeffs)
     return obj_bool_vars, obj_bool_coeffs
@@ -296,9 +296,9 @@ def days_off_between_late_and_day_shifts(model: CpModel,
             hard_min=hard_min,
             soft_min=soft_min,
             min_cost=min_cost,
-            prior=Prior([staff_works_late_shift[(m, d)]
-                        for d in days], [True]),
-            post=Post([staff_works_day_shift[(m, d)] for d in days], [True]),
+            prior=Prior([staff_works_late_shift[m, d]
+                        for d in days], [1]),
+            post=Post([staff_works_day_shift[m, d] for d in days], [1]),
         )
         obj_bool_vars.extend(variables)
         obj_bool_coeffs.extend(coeffs)
@@ -325,10 +325,10 @@ def days_off_between_late_and_afternoon_shifts(model: CpModel,
             hard_min=hard_min,
             soft_min=soft_min,
             min_cost=min_cost,
-            prior=Prior([staff_works_late_shift[(m, d)]
-                        for d in days], [True]),
-            post=Post([staff_works_afternoon_shift[(m, d)]
-                      for d in days], [True]),
+            prior=Prior([staff_works_late_shift[m, d]
+                        for d in days], [1]),
+            post=Post([staff_works_afternoon_shift[m, d]
+                      for d in days], [1]),
         )
         obj_bool_vars.extend(variables)
         obj_bool_coeffs.extend(coeffs)
@@ -501,14 +501,14 @@ def no_nightshifts_before_weekend_off(model: CpModel,
     for m in staff:
         variables, coeffs = add_soft_sequence_min(
             model=model,
-            prefix="days_off_after_midnight_shift",
-            shifts=[staff_doesnt_work_after_5_shift[(m, d)]
+            prefix="no_nightshifts_before_weekend_off",
+            shifts=[staff_doesnt_work_after_5_shift[m, d]
                     for d in fridays] + [model.NewConstant(1)] * 1,
             hard_min=hard_min,
             soft_min=soft_min,
             min_cost=min_cost,
             post=Post([model.NewConstant(1)] * hard_min +
-                      [staff_works_day[(m, d)] for d in saturdays], [1])
+                      [staff_works_day[m, d] for d in saturdays], [1])
         )
         obj_bool_vars.extend(variables)
         obj_bool_coeffs.extend(coeffs)
@@ -630,9 +630,7 @@ def apply_productivity(model: CpModel,
                        staff: List[int],
                        days: List[int],
                        shifts: List[int],
-                       span: int,
-                       obj_int_vars: List[IntVar],
-                       obj_int_coeffs: List[int]):
+                       span: int):
     # With productivities 1-n I can use the expected die rolls of span n-sided dice to determine how often each productivity will be violated
     # The paper just describes "super cool" physicians
     # This could be balancing mean time to completion, average cost, etc
