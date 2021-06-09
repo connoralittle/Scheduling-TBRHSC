@@ -165,6 +165,10 @@ def forbid_min(model, shifts, hard_min, prior=None, post=None):
             posts = post_predicates(start, length, prior, post)
             pred = priors + posts
 
+            print(span)
+            print(pred)
+            print()
+
             if prior_exists and post_exists:
                 model.AddBoolOr(not_list(pred))
             # If there is no predicates prevent runs of span

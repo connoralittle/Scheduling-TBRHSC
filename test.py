@@ -179,7 +179,10 @@ def minimize_split_weekends_test(solver, staff_works_day, staff, sats, suns):
     for m in staff:
         sat = [solver.Value(staff_works_day[m, d]) for d in sats]
         sun = [solver.Value(staff_works_day[m, d]) for d in suns]
+        print(sat)
+        print(sun)
         for d in sats:
+            print(d)
             if d < len(suns) and sat[d] and sun[d]:
                 split_weekends += 1
 
