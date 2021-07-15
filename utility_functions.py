@@ -20,7 +20,7 @@ def detect_pattern(list, pattern):
 
 
 def detect_pattern_soft(list, pattern):
-    return len(re.findall(pattern, ''.join([str(i) for i in list])))
+    return len(re.findall(pattern, "B" + ''.join([str(i) for i in list]) + "E"))
 
 
 def not_list(my_list: List):
@@ -58,13 +58,14 @@ def triangle(n):
 def list_difference(starting_list: List, difference_list: List):
     return difference_list if starting_list == [] else list(set(starting_list) - set(difference_list))
 
-def save_shifts_to_file(name, staff_works_shift_on_day, num_staff, num_days, num_shifts, solver):
+def save_shifts_to_file(name, staff_works_shift_on_day, staff, num_days, num_shifts, solver):
     f = open(name, "w")
 
-    f.write(f"{num_staff};")
+    f.write(f"{len(staff)};")
     f.write(f"{num_days};")
-    for m in range(num_staff):
+    for m in staff:
         for d in range(num_days):
+            f.write(m + ";")
             shift_seq = ''.join([str(solver.Value(staff_works_shift_on_day[m,d,s])) for s in range(num_shifts)])
             f.write(f"{shift_seq};")
     f.close()

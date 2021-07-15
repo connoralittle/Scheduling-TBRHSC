@@ -87,7 +87,7 @@ def create_staff_variables(model: CpModel,
         for d in days:
             for s in shifts:
                 model.Add(constraints[m, d, s] ==
-                          values[m]).OnlyEnforceIf(enforcements[m, d, s])
+                          values[staff.index(m)]).OnlyEnforceIf(enforcements[m, d, s])
                 model.Add(constraints[m, d, s] == 0).OnlyEnforceIf(
                     enforcements[m, d, s].Not())
 
@@ -103,20 +103,3 @@ def create_solver(time_seconds: int) -> CpSolver:
 
 def empty_minimize_constraints() -> Tuple[List, List]:
     return [], []
-
-class VarArraySolutionPrinter(CpSolverSolutionCallback):
-    """Print intermediate solutions."""
-
-    def __init__(self, variables):
-        CpSolverSolutionCallback.__init__(self)
-        self.__variables = variables
-        self.__solution_count = 0
-
-    def on_solution_callback(self):
-        self.__solution_count += 1
-        for v in self.__variables:
-            print('%s=%i' % (v, self.Value(v)), end=' ')
-        print()
-
-    def solution_count(self):
-        return self.__solution_count

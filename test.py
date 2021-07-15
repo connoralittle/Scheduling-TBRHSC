@@ -19,7 +19,7 @@ def all_shifts_taken_test(staff_works_shift_on_day_results: Dict[Tuple, IntVar],
 
 def no_two_shifts_on_same_day_test(staff_works_shift_on_day_results: Dict[Tuple, IntVar]):
     # No two shifts same day
-    for key, result in staff_works_shift_on_day_results.items():
+    for staff, result in staff_works_shift_on_day_results.items():
         assert(sum(result) <= 1)
 
 
@@ -35,19 +35,21 @@ def min_days_off_after_midnight_test(staff_doesnt_work_day_results, staff_works_
 
 
 def midnight_physicians_test(staff_works_shift_on_day_results: Dict[Tuple, IntVar],
+                             staff,
                              shifts: List[int]):
 
     # Certain staff work midnights only
     for key, result in staff_works_shift_on_day_results.items():
         x_shifts_only_test({key[0]: result}, midnight_staff_mask, [
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0], [0] * len(shifts)])
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0], [0] * len(shifts)], staff)
 
 
 def no_midnights_within_six_months_test(staff_works_midnight_shift_results: Dict[Tuple, IntVar],
+                                        staff,
                                         shifts: List[int]):
     # No midnights for staff in their first 6 months (need way to indicate when physician is in first 6 months of practice)
     x_shifts_only_test(staff_works_midnight_shift_results,
-                       staff_in_first_6_months_mask, [[0] * len(shifts)])
+                       staff_in_first_6_months_mask, [[0] * len(shifts)], staff)
 
 
 def max_midnights_in_a_row_test(staff_works_midnight_shift_results: Dict[Tuple, IntVar], hard_max: int, soft_max: int, obj):
@@ -57,15 +59,17 @@ def max_midnights_in_a_row_test(staff_works_midnight_shift_results: Dict[Tuple, 
 
 
 def ft_physicians_test(staff_works_shift_on_day_results: Dict[Tuple, IntVar],
+                       staff,
                        shifts: List[int]):
     # Certain physicians work only FT shift (0730,1530 shift)
     for key, result in staff_works_shift_on_day_results.items():
         x_shifts_only_test({key[0]: result}, ft_only_staff_mask, [[0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [
-                           0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0], [0] * len(shifts)])
+                           0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0], [0] * len(shifts)], staff)
 
 
 def no_late_shift_before_time_off_test(staff_works_day_results: Dict[Tuple, IntVar],
-                                       staff_works_after_5_shift_results: Dict[Tuple, IntVar]):
+                                       staff_works_after_5_shift_results: Dict[Tuple, IntVar],
+                                       requests):
     # No 2000, 2200, or midnight shift prior to day requested off
     for m, d, s, coeff in requests:
         if s == -1 and staff_works_day_results[m][d] and d > 0:
@@ -111,26 +115,39 @@ def transition_constraint_test(staff_works_shift_on_day_results, days):
     transitions = {elem[0]: elem[1] for elem in penalized_transitions}
     jumps_forward_25 = 0
     jumps_backwards_15 = 0
-    previous_shift = -1
+    # previous_shift = -1
     for key, result in staff_works_shift_on_day_results.items():
-        if previous_shift == -1:
-            try:
-                previous_shift = result.index(1)
-            except:
-                previous_shift = -1
-        else:
-            try:
-                ans = transitions[(previous_shift, result.index(1))]
-                if ans == 1:
-                    jumps_forward_25 += 1
-                elif ans == 3:
-                    jumps_backwards_15 += 1
-                previous_shift = result.index(1)
-            except:
-                previous_shift = -1
-
         if key[1] == len(days) - 1:
-            previous_shift = -1
+            continue
+        nxt = staff_works_shift_on_day_results[key[0], key[1] + 1]
+        try:
+            ans = transitions[result.index(1), nxt.index(1)]
+        except:
+            ans = 0
+        if ans == 1:
+            jumps_forward_25 += 1
+        if ans == 3:
+            jumps_backwards_15 += 1
+        # print(key)
+        # print(result)
+        # if previous_shift == -1:
+        #     try:
+        #         previous_shift = result.index(1)
+        #     except:
+        #         previous_shift = -1
+        # else:
+        #     try:
+        #         ans = transitions[(previous_shift, result.index(1))]
+        #         if ans == 1:
+        #             jumps_forward_25 += 1
+        #         elif ans == 3:
+        #             jumps_backwards_15 += 1
+        #         previous_shift = result.index(1)
+        #     except:
+        #         previous_shift = -1
+
+        # if key[1] == len(days) - 1:
+        #     previous_shift = -1
 
     print(
         f"Number of times shifts jump forwards 2.5 hours: {jumps_forward_25}")
@@ -151,6 +168,20 @@ def days_off_between_late_and_afternoon_shifts_test(staff_doesnt_work_day_result
 def late_shifts_in_a_row_test(staff_doesnt_work_late_shift_results, hard_min, soft_min, obj):
     add_soft_sequence_max_test("days_off_between_late_and_afternoon_shifts",
                                staff_doesnt_work_late_shift_results, hard_min, soft_min, obj)
+
+def late_shifts_in_two_weeks_test(staff_works_late_shift_results, hard_max, soft_max, obj):
+    print("late_shifts_in_two_weeks_test")
+    print(f"Objective function: {obj}")
+
+    for length in range(soft_max, hard_max + 1):
+        for staff in staff_works_late_shift_results:
+            partial_sum = 0
+            for weeks in list(zip(*(staff_works_late_shift_results[staff],) * 14)):
+                assert(sum(weeks) <= hard_max)
+                if sum(weeks) == length:
+                    partial_sum += 1
+        print(f"\t{length} from range {soft_max} to {hard_max}: {partial_sum}")
+        print()
 
 def avoid_consecutive_ft_shifts_test(staff_works_ft_shift_results, hard_min, soft_min, obj):
     add_soft_sequence_max_test("days_off_between_late_and_afternoon_shifts",
@@ -174,13 +205,20 @@ def equalize_afternoon_shifts_test(staff_works_afternoon_shift, target_cost, obj
 def equalize_weekdays_test(staff_works_weekdays, target_cost, obj):
     distribution_test("Weekend Equalization", staff_works_weekdays, target_cost, obj)
 
-def minimize_split_weekends_test(solver, staff_works_day, staff, sats, suns):
+def minimize_split_weekends_test(solver, staff_works_day, staff, sats, suns, obj):
+    print("minimize_split_weekends_test")
+    print(f"Objective function: {obj}")
+
     split_weekends = 0
     for m in staff:
         sat = [solver.Value(staff_works_day[m, d]) for d in sats]
         sun = [solver.Value(staff_works_day[m, d]) for d in suns]
-        for d in sats:
-            if d < len(suns) and sat[d] and sun[d]:
+        for d in range(len(sat)):
+            if d >= len(suns):
+                continue
+            if sat[d] and not sun[d]:
+                split_weekends += 1
+            if not sat[d] and sun[d]:
                 split_weekends += 1
 
     print(f"Number of split weekends: {split_weekends}")

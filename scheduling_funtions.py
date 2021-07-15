@@ -340,7 +340,6 @@ def distribution(model, target_shifts, prefix, target):
     cost_literals = []
     cost_coefficients = []
 
-    prefix = "weekend_dist"
     num_shifts = model.NewIntVar(0, target * 2, '%s' % prefix)
     model.Add(num_shifts == sum(target_shifts))
     diff = model.NewIntVar(-target, target, '%s' % prefix)
@@ -358,7 +357,7 @@ def distribution(model, target_shifts, prefix, target):
     # I have chosen the triangle numbers, 4 * n(n+1)/2, 1 + 2 + 3... * 4
     # Using regression this is equivilant to 2x + 2x^2
     diff_not_linear = model.NewIntVar(
-        0, target * target + target, 'diff_abs_%s' % prefix)
+        0, target * target + target, '%s_distribution' % prefix)
     model.AddMultiplicationEquality(diff_not_linear, [diff, diff_plus_one])
 
     cost_literals.append(diff_not_linear)

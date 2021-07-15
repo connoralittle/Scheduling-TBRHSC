@@ -45,65 +45,13 @@ afternoon_shifts_mask = [0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0]
 ft_shifts_mask = [0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
 on_call_shifts_mask = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
 
-requests = [
-    # # staff, day, shift, weight
-    # # if shift is -1 make it all shifts
-    # # if day is -1 then make it all days
-
-    # # Emma wants the first 6 days off after working one day
-    # (1, 1, -1, DEBUG),
-    # (1, 2, -1, DEBUG),
-    # (1, 3, -1, DEBUG),
-    # (1, 4, -1, DEBUG),
-    # (1, 5, -1, DEBUG),
-    # (1, 6, -1, DEBUG),
-
-    # (1, 30, -1, DEBUG),
-    # (3, 3, -1, DEBUG),
-    # (11, 6, -1, DEBUG),
-    # (4, 20, -1, DEBUG),
-    # (2, 3, -1, DEBUG),
-    # (8, 16, -1, DEBUG),
-    # (6, 14, -1, DEBUG),
-
-    # (6, 3, -1, DEBUG),
-    # (14, 6, -1, DEBUG),
-    # (15, 20, -1, DEBUG),
-    # (12, 3, -1, DEBUG),
-    # (18, 16, -1, DEBUG),
-    # (19, 14, -1, DEBUG),
-
-    # (4, 3, -1, DEBUG),
-    # (3, 6, -1, DEBUG),
-    # (7, 4, -1, DEBUG),
-    # (7, 6, -1, DEBUG),
-    # (7, 8, -1, DEBUG),
-    # (9, 14, -1, DEBUG),
-
-    # (4, 29, 4, DEBUG),
-    # (3, 23, 1, DEBUG),
-    # (7, 25, 2, DEBUG),
-    # (7, 28, 9, DEBUG),
-    # (7, 20, 6, DEBUG),
-    # (9, 3, 6, DEBUG),
-
-    # (0, 0, 1, DEBUG),
-    # (17, 0, 1, DEBUG),
-
-    #     # Emily loves 7 am shifts
-    #   (1, -1, 0, -DEBUG),
-    #   (1, -1, 1, -DEBUG),
-    #   (1, -1, 2, -DEBUG),
-
-]
-
 
 def create_data(data: List) -> List[int]:
     return list(range(len(data)))
 
 
 def filter_data(data: List[int], mask: List[int]) -> List[int]:
-    return list(filter(lambda x: mask[x] == 1, data))
+    return list(filter(lambda x: mask[data.index(x)] == 1, data))
 
 
 def create_date_range(first_month: int, last_month: int, year: int) -> List[int]:

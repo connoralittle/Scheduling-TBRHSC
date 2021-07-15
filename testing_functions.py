@@ -2,9 +2,9 @@ from utility_functions import *
 from scheduling_funtions import *
 
 
-def x_shifts_only_test(results, validation_mask, valid_masks):
+def x_shifts_only_test(results, validation_mask, valid_masks, staff):
     for key, result in results.items():
-        if validation_mask[key]:
+        if validation_mask[staff.index(key)]:
             assert(result in valid_masks)
 
 
@@ -32,6 +32,7 @@ def distribution_test(title, results, target_shifts, obj):
         staff_sum = sum(result)
         partial_sum += abs(target_shifts - staff_sum)
     print(f"Difference from target of {target_shifts}: {partial_sum}")
+    print()
 
 def forbid_max_test(results, hard_max, prior=None, post=None):
     prior_exists = prior is not None
@@ -148,9 +149,9 @@ def penalize_min_test(title, results, hard_min, soft_min, obj, prior=None, post=
                             result[start: start + length + 1], "1" * length + "0")
                         pred_check = False
             if not prior_exists and not post_exists:
-                partial_sum += detect_pattern_soft(result, "0" + "1" * length)
-                partial_sum += detect_pattern_soft(
-                    result[:length+1], "1" * length)
+                partial_sum += detect_pattern_soft(result, "0" + "1" * length + "0")
+                partial_sum += detect_pattern_soft(result, "0" + "1" * length + "E")
+                partial_sum += detect_pattern_soft(result, "B" + "1" * length + "0")
         print(f"\t{length} from range {hard_min} to {soft_min}: {partial_sum}")
         print()
     print()
@@ -194,9 +195,9 @@ def penalize_max_test(title, results, hard_max, soft_max, obj, prior=None, post=
                             result[start: start + length + 1], "1" * length + "0")
                         pred_check = False
             if not prior_exists and not post_exists:
-                partial_sum += detect_pattern_soft(result, "0" + "1" * length)
-                partial_sum += detect_pattern_soft(
-                    result[:length], "1" * length)
+                partial_sum += detect_pattern_soft(result, "0" + "1" * length + "0")
+                partial_sum += detect_pattern_soft(result, "0" + "1" * length + "E")
+                partial_sum += detect_pattern_soft(result, "B" + "1" * length + "0")
         print(f"\t{length} from range {soft_max} to {hard_max}: {partial_sum}")
         print()
     print()
